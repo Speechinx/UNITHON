@@ -101,10 +101,10 @@ class SpeechAnalyzer:
             if not text:
                 continue
 
-            words = re.findall(
+            '''words = re.findall(
                 r"\S+",
                 text,
-            )
+            )'''
 
             count += len(words)
 
