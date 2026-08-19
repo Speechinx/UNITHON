@@ -117,14 +117,43 @@ class SpeechAnalyzer:
 
         gaps = []
 
-        ordered = sorted(
-            segments,
-            key=lambda x: x["start"],
+        speech_intervals = []
+
+        # --------------------------------
+        # 모든 세부 발화 구간 수집
+        # --------------------------------
+
+        for segment in segments:
+
+            timestamps = segment.get(
+                "timestamps",
+                []
+            )
+
+            for timestamp in timestamps:
+
+                speech_intervals.append(
+                    {
+                        "start": timestamp["start"],
+                        "end": timestamp["end"],
+                    }
+                )
+
+        # --------------------------------
+        # 시간순 정렬
+        # --------------------------------
+
+        speech_intervals.sort(
+            key=lambda x: x["start"]
         )
 
+        # --------------------------------
+        # 발화 사이의 침묵 계산
+        # --------------------------------
+
         for previous, current in zip(
-            ordered,
-            ordered[1:],
+            speech_intervals,
+            speech_intervals[1:],
         ):
 
             gap = (
@@ -138,7 +167,10 @@ class SpeechAnalyzer:
                     {
                         "start": previous["end"],
                         "end": current["start"],
-                        "duration": gap,
+                        "duration": round(
+                            gap,
+                            3,
+                        ),
                     }
                 )
 
