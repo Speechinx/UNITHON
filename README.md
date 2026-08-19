@@ -1,14 +1,14 @@
-# 🎤 Presentation Coach AI
+# Presentation Helper AI
 
 > AI 기반 발표 분석 및 발표 코칭 서비스
 
 발표자의 음성을 분석하여  
 말하기 속도, 침묵, 추임새, 반복 표현 등을 분석하고  
-발표 중 개선이 필요한 구간을 시각화하는 AI Presentation Coach입니다.
+발표 중 개선이 필요한 구간을 시각화하는 AI Presentation Helper입니다.
 
 ---
 
-## 🚀 Project Overview
+##  Project Overview
 
 발표 연습을 녹음한 음성 파일을 업로드하면  
 음성 AI 모델을 이용하여 발표 내용을 분석합니다.
@@ -32,7 +32,7 @@
 # 🏗️ Architecture
 
 ```text
-                    🎙️ Audio
+                    🎙️ Audio (mp4 etc..)
                        │
                        ▼
               ┌─────────────────┐
