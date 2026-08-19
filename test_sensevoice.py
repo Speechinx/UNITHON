@@ -1,16 +1,26 @@
-from funasr import AutoModel
+from app.services.sensevoice import SenseVoiceService
 
 
 print("Loading SenseVoice...")
 
-model = AutoModel(
-    model="iic/SenseVoiceSmall",
-    vad_model="fsmn-vad",
-    vad_kwargs={
-        "max_single_segment_time": 30000
-    },
-    spk_model="cam++",
-    device="cuda:0",
-)
+service = SenseVoiceService()
 
 print("SenseVoice loaded successfully!")
+print("Starting audio analysis...")
+
+result = service.analyze(
+    "audio/test.wav"
+)
+
+print("\n===== RESULT =====")
+
+print("Transcript:")
+print(result["transcript"])
+
+print("\nDuration:")
+print(result["duration"])
+
+print("\nSegments:")
+
+for segment in result["segments"]:
+    print(segment)
