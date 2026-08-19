@@ -9,7 +9,6 @@ class RiskAnalyzer:
     ) -> dict:
 
         if not segments:
-
             return {
                 "overall_score": 0,
                 "level": "low",
@@ -33,13 +32,11 @@ class RiskAnalyzer:
                 duration,
             )
 
-            score, reasons = (
-                self._calculate_window(
-                    start,
-                    end,
-                    segments,
-                    filler_occurrences,
-                )
+            score, reasons = self._calculate_window(
+                start,
+                end,
+                segments,
+                filler_occurrences,
             )
 
             heatmap.append(
@@ -96,6 +93,26 @@ class RiskAnalyzer:
         segments,
         filler_occurrences,
     ):
+        """
+        특정 시간 구간의 발표 위험도를 계산한다.
+
+        위험 요소:
+        1. 말하기 속도
+        2. 긴 침묵
+        3. 추임새
+        4. 반복 단어
+        """
+
+        # --------------------------------
+        # 기본값
+        # --------------------------------
+
+        score = 0
+        reasons = []
+
+        # --------------------------------
+        # 현재 시간 구간의 발화
+        # --------------------------------
 
         window_segments = [
             segment
@@ -106,17 +123,53 @@ class RiskAnalyzer:
             )
         ]
 
+        # --------------------------------
+        # 1. 침묵 분석
+        # --------------------------------
+
+        silence_gaps = self._silence_gaps(
+            segments
+        )
+
+        long_silence = sum(
+            gap["duration"]
+            for gap in silence_gaps
+            if (
+                gap["start"] < end
+                and gap["end"] > start
+            )
+        )
+
+        if long_silence >= 3:
+
+            score += 30
+
+            reasons.append(
+                f"긴 침묵 {long_silence:.1f}초"
+            )
+
+        elif long_silence >= 1.5:
+
+            score += 15
+
+            reasons.append(
+                f"침묵 {long_silence:.1f}초"
+            )
+
+        # --------------------------------
+        # 발화 자체가 없는 구간
+        # --------------------------------
+
         if not window_segments:
 
-            return 60, ["긴 침묵"]
+            return min(score + 60, 100), [
+                *reasons,
+                "발화가 없는 구간",
+            ]
 
-        score = 0
-
-        reasons = []
-
-        # ----------------------------
-        # 1. 발화 속도
-        # ----------------------------
+        # --------------------------------
+        # 2. 발화 속도
+        # --------------------------------
 
         text_length = sum(
             len(
@@ -145,6 +198,7 @@ class RiskAnalyzer:
             if approximate_wpm > 220:
 
                 score += 30
+
                 reasons.append(
                     "말하기 속도가 매우 빠름"
                 )
@@ -152,13 +206,14 @@ class RiskAnalyzer:
             elif approximate_wpm > 180:
 
                 score += 15
+
                 reasons.append(
                     "말하기 속도가 빠름"
                 )
 
-        # ----------------------------
-        # 2. 추임새
-        # ----------------------------
+        # --------------------------------
+        # 3. 추임새
+        # --------------------------------
 
         filler_count = sum(
             1
@@ -186,9 +241,9 @@ class RiskAnalyzer:
                 f"추임새 {filler_count}회"
             )
 
-        # ----------------------------
-        # 3. 반복
-        # ----------------------------
+        # --------------------------------
+        # 4. 반복 단어
+        # --------------------------------
 
         repetition_count = sum(
             1
@@ -196,8 +251,7 @@ class RiskAnalyzer:
             if (
                 item["start"] < end
                 and item["end"] > start
-                and item["type"]
-                == "repetition"
+                and item["type"] == "repetition"
             )
         )
 
@@ -211,6 +265,49 @@ class RiskAnalyzer:
 
         return min(score, 100), reasons
 
+    # --------------------------------
+    # 침묵 구간 탐지
+    # --------------------------------
+
+    def _silence_gaps(
+        self,
+        segments,
+    ):
+
+        gaps = []
+
+        ordered = sorted(
+            segments,
+            key=lambda x: x["start"],
+        )
+
+        for previous, current in zip(
+            ordered,
+            ordered[1:],
+        ):
+
+            gap = (
+                current["start"]
+                - previous["end"]
+            )
+
+            # 1초 이상 침묵만 분석
+            if gap >= 1.0:
+
+                gaps.append(
+                    {
+                        "start": previous["end"],
+                        "end": current["start"],
+                        "duration": gap,
+                    }
+                )
+
+        return gaps
+
+    # --------------------------------
+    # 위험 구간 이유 다시 계산
+    # --------------------------------
+
     def _reasons_for_window(
         self,
         item,
@@ -218,16 +315,18 @@ class RiskAnalyzer:
         filler_occurrences,
     ):
 
-        _, reasons = (
-            self._calculate_window(
-                item["start"],
-                item["end"],
-                segments,
-                filler_occurrences,
-            )
+        _, reasons = self._calculate_window(
+            item["start"],
+            item["end"],
+            segments,
+            filler_occurrences,
         )
 
         return reasons
+
+    # --------------------------------
+    # 위험도 레벨
+    # --------------------------------
 
     def _level(self, score):
 
