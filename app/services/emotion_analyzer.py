@@ -5,7 +5,11 @@ import wave
 
 class EmotionAnalyzer:
     WINDOW_SIZE = 10.0
+
     MIN_LAST_WINDOW = 3.0
+
+    # 감정 분석 시 문맥 확보용
+    CONTEXT_PADDING = 1.5
 
     def __init__(
         self,
@@ -35,8 +39,29 @@ class EmotionAnalyzer:
         results = []
 
         for window in windows:
-            start = window["start"]
-            end = window["end"]
+            start = (
+                window["start"]
+            )
+
+            end = (
+                window["end"]
+            )
+
+            # ==========================================
+            # 실제 감정 분석에는 앞뒤 문맥을 추가
+            # ==========================================
+
+            analysis_start = max(
+                0.0,
+                start
+                - self.CONTEXT_PADDING,
+            )
+
+            analysis_end = min(
+                duration,
+                end
+                + self.CONTEXT_PADDING,
+            )
 
             temp_path = None
 
@@ -44,8 +69,8 @@ class EmotionAnalyzer:
                 temp_path = (
                     self._extract_wav_segment(
                         audio_path,
-                        start,
-                        end,
+                        analysis_start,
+                        analysis_end,
                     )
                 )
 
@@ -63,7 +88,16 @@ class EmotionAnalyzer:
                 )
 
                 if not emotion:
-                    emotion = "unknown"
+                    emotion = (
+                        "unknown"
+                    )
+
+                # ==========================================
+                # 주의:
+                #
+                # 분석에는 padding된 시간을 사용하지만
+                # 결과 시간은 원래 10초 window 그대로 반환
+                # ==========================================
 
                 results.append(
                     {
@@ -71,10 +105,12 @@ class EmotionAnalyzer:
                             start,
                             2,
                         ),
+
                         "end": round(
                             end,
                             2,
                         ),
+
                         "emotion_signal": (
                             emotion
                         ),
@@ -82,18 +118,21 @@ class EmotionAnalyzer:
                 )
 
             except Exception:
-                # 감정 분석 실패가
-                # 전체 발표 분석을 실패시키지 않도록 함
+                # 감정 분석 실패 때문에
+                # 전체 발표 분석까지 실패시키지 않음
+
                 results.append(
                     {
                         "start": round(
                             start,
                             2,
                         ),
+
                         "end": round(
                             end,
                             2,
                         ),
+
                         "emotion_signal": (
                             "unknown"
                         ),
@@ -111,6 +150,7 @@ class EmotionAnalyzer:
                         os.remove(
                             temp_path
                         )
+
                     except OSError:
                         pass
 
@@ -170,8 +210,21 @@ class EmotionAnalyzer:
 
             start = end
 
-        # 마지막 구간이 너무 짧으면
-        # 바로 앞 구간에 병합
+        # ==========================================
+        # 마지막 구간이 3초보다 짧으면
+        # 이전 구간에 병합
+        #
+        # 예:
+        # 0~10
+        # 10~20
+        # 20~22
+        #
+        # ->
+        #
+        # 0~10
+        # 10~22
+        # ==========================================
+
         if len(windows) >= 2:
             last_window = (
                 windows[-1]
@@ -214,6 +267,10 @@ class EmotionAnalyzer:
                 source.getframerate()
             )
 
+            total_frames = (
+                source.getnframes()
+            )
+
             start_frame = int(
                 start
                 * sample_rate
@@ -224,17 +281,29 @@ class EmotionAnalyzer:
                 * sample_rate
             )
 
-            frame_count = max(
+            start_frame = max(
                 0,
+                min(
+                    start_frame,
+                    total_frames,
+                ),
+            )
+
+            end_frame = max(
+                start_frame,
+                min(
+                    end_frame,
+                    total_frames,
+                ),
+            )
+
+            frame_count = (
                 end_frame
-                - start_frame,
+                - start_frame
             )
 
             source.setpos(
-                min(
-                    start_frame,
-                    source.getnframes(),
-                )
+                start_frame
             )
 
             frames = (

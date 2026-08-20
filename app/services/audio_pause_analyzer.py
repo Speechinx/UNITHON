@@ -4,7 +4,7 @@ import numpy as np
 
 class AudioPauseAnalyzer:
     FRAME_MS = 30
-    MIN_PAUSE_MS = 500
+    MIN_PAUSE_MS = 800
     MERGE_GAP_MS = 120
 
     def analyze(self, audio_path: str) -> dict:
