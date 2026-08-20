@@ -1,6 +1,3 @@
-import re
-
-
 class SpeechAnalyzer:
 
     def analyze(
@@ -93,20 +90,12 @@ class SpeechAnalyzer:
 
         for segment in segments:
 
-            text = segment.get(
-                "text",
-                ""
-            ).strip()
+            normalized_words = segment.get(
+                "normalized_words",
+                []
+            )
 
-            if not text:
-                continue
-
-            '''words = re.findall(
-                r"\S+",
-                text,
-            )'''
-
-            count += len(words)
+            count += len(normalized_words)
 
         return count
 

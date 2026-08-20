@@ -1,4 +1,5 @@
 from funasr import AutoModel
+from app.services.text_normalizer import TextNormalizer
 
 
 class SenseVoiceService:
@@ -14,6 +15,8 @@ class SenseVoiceService:
             spk_model="cam++",
             device="cuda:0",
         )
+
+        self.normalizer = TextNormalizer()
 
     def analyze(self, audio_path: str) -> dict:
 
@@ -85,26 +88,35 @@ class SenseVoiceService:
                 )
             )
 
-            segments.append(
-                {
-                    "start": round(start, 3),
-                    "end": round(end, 3),
-                    "text": text,
-                    "speaker": sentence.get(
-                        "spk",
-                        0
-                    ),
+        segment = {
+            "start": round(start, 3),
+            "end": round(end, 3),
+            "text": text,
+            "speaker": sentence.get(
+                "spk",
+                0
+            ),
 
-                    # SenseVoice의 세부 timestamp 보존
-                    "timestamps": [
-                        {
-                            "start": t[0] / 1000,
-                            "end": t[1] / 1000,
-                        }
-                        for t in timestamp
-                    ],
+            # SenseVoice의 세부 timestamp 보존
+            "timestamps": [
+                {
+                    "start": t[0] / 1000,
+                    "end": t[1] / 1000,
                 }
+                for t in timestamp
+            ],
+        }
+
+        # Kiwi 기반 어절 분석
+        segment["normalized_words"] = (
+            self.normalizer.normalize_segment(
+                segment
             )
+        )
+
+        segments.append(segment)
+
+        return segments
 
         return segments
 
