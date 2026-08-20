@@ -1,334 +1,313 @@
 class RiskAnalyzer:
-
-    WINDOW_SIZE = 15
+    WINDOW_SIZE = 10
 
     def analyze(
         self,
-        segments: list[dict],
-        filler_occurrences: list[dict],
+        duration: float,
+        speech_result: dict,
+        filler_result: list[dict],
     ) -> dict:
 
-        if not segments:
+        if duration <= 0:
             return {
                 "overall_score": 0,
-                "level": "low",
+                "overall_level": "low",
                 "heatmap": [],
-                "risk_segments": [],
             }
-
-        duration = max(
-            segment["end"]
-            for segment in segments
-        )
 
         heatmap = []
 
-        start = 0
+        window_start = 0.0
 
-        while start < duration:
-
-            end = min(
-                start + self.WINDOW_SIZE,
+        while window_start < duration:
+            window_end = min(
+                window_start + self.WINDOW_SIZE,
                 duration,
             )
 
-            score, reasons = self._calculate_window(
-                start,
-                end,
-                segments,
-                filler_occurrences,
+            window_result = self._analyze_window(
+                start=window_start,
+                end=window_end,
+                speech_result=speech_result,
+                filler_result=filler_result,
             )
 
             heatmap.append(
-                {
-                    "start": round(start, 2),
-                    "end": round(end, 2),
-                    "score": score,
-                    "level": self._level(score),
-                }
+                window_result
             )
 
-            start = end
+            window_start += self.WINDOW_SIZE
 
-        risk_segments = [
-            {
-                **item,
-                "reasons": self._reasons_for_window(
-                    item,
-                    segments,
-                    filler_occurrences,
-                ),
-            }
-            for item in heatmap
-            if item["score"] >= 50
-        ]
+        overall_score = self._calculate_overall_score(
+            heatmap
+        )
 
-        overall_score = (
-            sum(
-                item["score"]
-                for item in heatmap
-            )
-            / len(heatmap)
+        overall_level = self._score_to_level(
+            overall_score
         )
 
         return {
-            "overall_score": round(
-                overall_score,
-                2,
-            ),
-
-            "level": self._level(
-                overall_score
-            ),
-
+            "overall_score": overall_score,
+            "overall_level": overall_level,
             "heatmap": heatmap,
-
-            "risk_segments": risk_segments,
         }
 
-    def _calculate_window(
+    def _analyze_window(
         self,
-        start,
-        end,
-        segments,
-        filler_occurrences,
-    ):
-        """
-        특정 시간 구간의 발표 위험도를 계산한다.
-
-        위험 요소:
-        1. 말하기 속도
-        2. 긴 침묵
-        3. 추임새
-        4. 반복 단어
-        """
-
-        # --------------------------------
-        # 기본값
-        # --------------------------------
+        start: float,
+        end: float,
+        speech_result: dict,
+        filler_result: list[dict],
+    ) -> dict:
 
         score = 0
         reasons = []
 
-        # --------------------------------
-        # 현재 시간 구간의 발화
-        # --------------------------------
+        # ==========================================
+        # 1. Pause 분석
+        # ==========================================
 
-        window_segments = [
-            segment
-            for segment in segments
-            if (
-                segment["start"] < end
-                and segment["end"] > start
-            )
+        pauses = self._get_pauses_in_window(
+            pauses=speech_result.get(
+                "internal_pauses",
+                [],
+            ),
+            start=start,
+            end=end,
+        )
+
+        pause_count = len(pauses)
+
+        long_pauses = [
+            pause
+            for pause in pauses
+            if pause.get(
+                "duration",
+                0,
+            ) >= 1.0
         ]
 
-        # --------------------------------
-        # 1. 침묵 분석
-        # --------------------------------
-
-        silence_gaps = self._silence_gaps(
-            segments
-        )
-
-        long_silence = sum(
-            gap["duration"]
-            for gap in silence_gaps
-            if (
-                gap["start"] < end
-                and gap["end"] > start
-            )
-        )
-
-        if long_silence >= 3:
-
-            score += 30
-
-            reasons.append(
-                f"긴 침묵 {long_silence:.1f}초"
-            )
-
-        elif long_silence >= 1.5:
-
-            score += 15
-
-            reasons.append(
-                f"침묵 {long_silence:.1f}초"
-            )
-
-        # --------------------------------
-        # 발화 자체가 없는 구간
-        # --------------------------------
-
-        if not window_segments:
-
-            return min(score + 60, 100), [
-                *reasons,
-                "발화가 없는 구간",
-            ]
-
-        # --------------------------------
-        # 2. 발화 속도
-        # --------------------------------
-
-        text_length = sum(
-            len(
-                segment["text"]
-            )
-            for segment in window_segments
-        )
-
-        speaking_time = sum(
-            max(
-                segment["end"]
-                - segment["start"],
+        very_long_pauses = [
+            pause
+            for pause in pauses
+            if pause.get(
+                "duration",
                 0,
-            )
-            for segment in window_segments
-        )
+            ) >= 1.5
+        ]
 
-        if speaking_time > 0:
-
-            approximate_wpm = (
-                text_length
-                / speaking_time
-                * 60
-            )
-
-            if approximate_wpm > 220:
-
-                score += 30
-
-                reasons.append(
-                    "말하기 속도가 매우 빠름"
-                )
-
-            elif approximate_wpm > 180:
-
-                score += 15
-
-                reasons.append(
-                    "말하기 속도가 빠름"
-                )
-
-        # --------------------------------
-        # 3. 추임새
-        # --------------------------------
-
-        filler_count = sum(
-            1
-            for item in filler_occurrences
-            if (
-                item["start"] < end
-                and item["end"] > start
-                and item["type"] == "filler"
-            )
-        )
-
-        if filler_count >= 4:
-
-            score += 30
-
-            reasons.append(
-                f"추임새 {filler_count}회"
-            )
-
-        elif filler_count >= 2:
-
+        if pause_count >= 3:
             score += 15
 
             reasons.append(
-                f"추임새 {filler_count}회"
+                f"짧은 구간에 pause가 "
+                f"{pause_count}회 발생"
             )
 
-        # --------------------------------
-        # 4. 반복 단어
-        # --------------------------------
+        if long_pauses:
+            score += 15
 
-        repetition_count = sum(
-            1
-            for item in filler_occurrences
-            if (
-                item["start"] < end
-                and item["end"] > start
-                and item["type"] == "repetition"
+            reasons.append(
+                f"1초 이상 pause "
+                f"{len(long_pauses)}회"
             )
-        )
 
-        if repetition_count >= 2:
-
+        if very_long_pauses:
             score += 20
 
             reasons.append(
-                f"단어 반복 {repetition_count}회"
+                f"1.5초 이상 긴 pause "
+                f"{len(very_long_pauses)}회"
             )
 
-        return min(score, 100), reasons
+        # ==========================================
+        # 2. 추임새 / 반복 분석
+        # ==========================================
 
-    # --------------------------------
-    # 침묵 구간 탐지
-    # --------------------------------
+        window_occurrences = []
 
-    def _silence_gaps(
-        self,
-        segments,
-    ):
-
-        gaps = []
-
-        ordered = sorted(
-            segments,
-            key=lambda x: x["start"],
-        )
-
-        for previous, current in zip(
-            ordered,
-            ordered[1:],
-        ):
-
-            gap = (
-                current["start"]
-                - previous["end"]
+        for occurrence in filler_result:
+            occurrence_start = occurrence.get(
+                "start",
+                0,
             )
 
-            # 1초 이상 침묵만 분석
-            if gap >= 1.0:
-
-                gaps.append(
-                    {
-                        "start": previous["end"],
-                        "end": current["start"],
-                        "duration": gap,
-                    }
+            if (
+                start
+                <= occurrence_start
+                < end
+            ):
+                window_occurrences.append(
+                    occurrence
                 )
 
-        return gaps
-
-    # --------------------------------
-    # 위험 구간 이유 다시 계산
-    # --------------------------------
-
-    def _reasons_for_window(
-        self,
-        item,
-        segments,
-        filler_occurrences,
-    ):
-
-        _, reasons = self._calculate_window(
-            item["start"],
-            item["end"],
-            segments,
-            filler_occurrences,
+        filler_count = sum(
+            1
+            for occurrence in window_occurrences
+            if occurrence.get(
+                "type"
+            ) == "filler"
         )
 
-        return reasons
+        repetition_count = sum(
+            1
+            for occurrence in window_occurrences
+            if occurrence.get(
+                "type"
+            ) == "repetition"
+        )
 
-    # --------------------------------
-    # 위험도 레벨
-    # --------------------------------
+        if filler_count >= 2:
+            score += 15
 
-    def _level(self, score):
+            reasons.append(
+                f"추임새 {filler_count}회"
+            )
+
+        if filler_count >= 4:
+            score += 10
+
+        if repetition_count >= 1:
+            score += 15
+
+            reasons.append(
+                f"반복 표현 "
+                f"{repetition_count}회"
+            )
+
+        if repetition_count >= 2:
+            score += 10
+
+        # ==========================================
+        # 3. 말하기 속도
+        # ==========================================
+
+        speech_rate = speech_result.get(
+            "speech_rate",
+            0,
+        )
+
+        if speech_rate > 0:
+            if speech_rate < 70:
+                score += 15
+
+                reasons.append(
+                    f"말하기 속도가 느림 "
+                    f"({speech_rate:.1f} 어절/분)"
+                )
+
+            elif speech_rate > 180:
+                score += 15
+
+                reasons.append(
+                    f"말하기 속도가 빠름 "
+                    f"({speech_rate:.1f} 어절/분)"
+                )
+
+        # ==========================================
+        # 4. 점수 제한 및 레벨
+        # ==========================================
+
+        score = min(
+            score,
+            100,
+        )
+
+        level = self._score_to_level(
+            score
+        )
+
+        return {
+            "start": round(
+                start,
+                2,
+            ),
+
+            "end": round(
+                end,
+                2,
+            ),
+
+            "score": score,
+
+            "level": level,
+
+            "pause_count": pause_count,
+
+            "long_pause_count": len(
+                long_pauses
+            ),
+
+            "very_long_pause_count": len(
+                very_long_pauses
+            ),
+
+            "filler_count": filler_count,
+
+            "repetition_count": (
+                repetition_count
+            ),
+
+            "reasons": reasons,
+        }
+
+    def _get_pauses_in_window(
+        self,
+        pauses: list[dict],
+        start: float,
+        end: float,
+    ) -> list[dict]:
+
+        result = []
+
+        for pause in pauses:
+            pause_start = pause.get(
+                "start",
+                0,
+            )
+
+            pause_end = pause.get(
+                "end",
+                0,
+            )
+
+            # pause가 현재 window와 조금이라도 겹치면 포함
+            if (
+                pause_end > start
+                and pause_start < end
+            ):
+                result.append(
+                    pause
+                )
+
+        return result
+
+    def _calculate_overall_score(
+        self,
+        heatmap: list[dict],
+    ) -> int:
+
+        if not heatmap:
+            return 0
+
+        scores = [
+            window["score"]
+            for window in heatmap
+        ]
+
+        average_score = (
+            sum(scores)
+            / len(scores)
+        )
+
+        return round(
+            average_score
+        )
+
+    def _score_to_level(
+        self,
+        score: int,
+    ) -> str:
 
         if score >= 70:
             return "high"
