@@ -1,16 +1,17 @@
 import os
 import shutil
 import tempfile
-
-from app.schemas.analysis_response import (
-    AnalysisResponse
-)
+import wave
 
 from fastapi import (
     APIRouter,
     File,
     HTTPException,
     UploadFile,
+)
+
+from app.schemas.analysis_response import (
+    AnalysisResponse
 )
 
 from app.services.presentation_analysis_service import (
@@ -21,8 +22,10 @@ from app.services.presentation_analysis_service import (
 router = APIRouter()
 
 
-# 서버 시작 후 최초 요청 시 모델이 로딩됨
 presentation_service = None
+
+
+MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
 def get_presentation_service():
@@ -36,6 +39,57 @@ def get_presentation_service():
     return presentation_service
 
 
+def validate_wav(
+    file_path: str,
+):
+    try:
+        with wave.open(
+            file_path,
+            "rb",
+        ) as wav_file:
+
+            channels = (
+                wav_file.getnchannels()
+            )
+
+            sample_rate = (
+                wav_file.getframerate()
+            )
+
+            frames = (
+                wav_file.getnframes()
+            )
+
+            if frames <= 0:
+                raise ValueError(
+                    "빈 WAV 파일입니다."
+                )
+
+            if channels <= 0:
+                raise ValueError(
+                    "유효하지 않은 채널 수입니다."
+                )
+
+            if sample_rate <= 0:
+                raise ValueError(
+                    "유효하지 않은 샘플링 레이트입니다."
+                )
+
+    except wave.Error:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "실제 WAV 오디오 파일이 아닙니다."
+            ),
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+
 @router.post(
     "/analyze",
     response_model=AnalysisResponse,
@@ -43,10 +97,6 @@ def get_presentation_service():
 async def analyze_presentation(
     file: UploadFile = File(...)
 ):
-
-    # ==========================================
-    # 1. 파일 형식 확인
-    # ==========================================
 
     filename = (
         file.filename
@@ -57,21 +107,13 @@ async def analyze_presentation(
         filename
     )[1].lower()
 
-    allowed_extensions = {
-        ".wav",
-    }
-
-    if extension not in allowed_extensions:
+    if extension != ".wav":
         raise HTTPException(
             status_code=400,
             detail=(
                 "현재는 WAV 파일만 지원합니다."
             ),
         )
-
-    # ==========================================
-    # 2. 임시 WAV 파일 생성
-    # ==========================================
 
     temp_path = None
 
@@ -85,14 +127,43 @@ async def analyze_presentation(
                 temp_file.name
             )
 
-            shutil.copyfileobj(
-                file.file,
-                temp_file,
+            total_size = 0
+
+            while True:
+                chunk = await file.read(
+                    1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                total_size += len(
+                    chunk
+                )
+
+                if total_size > MAX_FILE_SIZE:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            "파일 크기는 최대 50MB까지 지원합니다."
+                        ),
+                    )
+
+                temp_file.write(
+                    chunk
+                )
+
+        if total_size == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "빈 파일은 업로드할 수 없습니다."
+                ),
             )
 
-        # ==========================================
-        # 3. 전체 분석 실행
-        # ==========================================
+        validate_wav(
+            temp_path
+        )
 
         service = (
             get_presentation_service()
@@ -101,10 +172,6 @@ async def analyze_presentation(
         result = service.analyze(
             temp_path
         )
-
-        # ==========================================
-        # 4. 프론트용 결과 정리
-        # ==========================================
 
         speech = result.get(
             "speech",
@@ -116,7 +183,7 @@ async def analyze_presentation(
             {},
         )
 
-        response = {
+        return {
             "transcript": (
                 result.get(
                     "transcript",
@@ -234,8 +301,6 @@ async def analyze_presentation(
             ),
         }
 
-        return response
-
     except HTTPException:
         raise
 
@@ -248,10 +313,6 @@ async def analyze_presentation(
         )
 
     finally:
-        # ==========================================
-        # 5. 임시 파일 삭제
-        # ==========================================
-
         try:
             await file.close()
         except Exception:
