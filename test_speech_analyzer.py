@@ -6,15 +6,13 @@ print("Loading SenseVoice...")
 
 sensevoice = SenseVoiceService()
 
-print("SenseVoice loaded!")
+print("SenseVoice loaded successfully!")
 
-print("\nAnalyzing audio...")
+print("Starting audio analysis...")
 
 result = sensevoice.analyze(
     "audio/test.wav"
 )
-
-segments = result["segments"]
 
 print("\n===== SENSEVOICE RESULT =====")
 
@@ -24,48 +22,60 @@ print(result["transcript"])
 print("\nDuration:")
 print(result["duration"])
 
-print("\n===== SPEECH ANALYSIS =====")
 
-analyzer = SpeechAnalyzer()
+# SpeechAnalyzer 실행
+speech_analyzer = SpeechAnalyzer()
 
-analysis = analyzer.analyze(
-    segments
+analysis = speech_analyzer.analyze(
+    result["segments"]
 )
+
+
+print("\n===== SPEECH ANALYSIS =====")
 
 print("어절 수:")
 print(analysis["word_count"])
 
-print("발화 시간:")
-print(analysis["speaking_time"])
-
-print("말하기 속도:")
+print("분석 구간:")
 print(
-    analysis["speech_rate_wpm"],
-    "어절/분"
-)
-
-print("침묵 시간:")
-print(
-    analysis["silence_time"],
+    analysis["presentation_duration"],
     "초"
 )
 
-print("침묵 비율:")
+print("실제 발화 시간:")
 print(
-    analysis["silence_ratio"]
+    analysis["speaking_time"],
+    "초"
 )
 
-print("\n===== SILENCE GAPS =====")
-
-gaps = analyzer._silence_gaps(
-    segments
+print("Pause 시간:")
+print(
+    analysis["pause_time"],
+    "초"
 )
 
-for gap in gaps:
-    print(
-        f"{gap['start']:.2f}s"
-        f" ~ "
-        f"{gap['end']:.2f}s"
-        f" "
-        f"({gap['duration']:.2f}s)"
-    )
+print("Pause 비율:")
+print(
+    analysis["pause_ratio"]
+)
+
+print("말하기 속도:")
+print(
+    analysis["speech_rate"],
+    "어절/분"
+)
+
+
+print("\n===== PAUSES =====")
+
+if not analysis["pauses"]:
+    print("탐지된 pause 없음")
+
+else:
+    for pause in analysis["pauses"]:
+        print(
+            f"{pause['start']:.2f}s"
+            f" ~ "
+            f"{pause['end']:.2f}s "
+            f"({pause['duration']:.2f}s)"
+        )

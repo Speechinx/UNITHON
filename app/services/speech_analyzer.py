@@ -1,5 +1,8 @@
 class SpeechAnalyzer:
 
+    # 발표 중 pause라고 판단할 최소 시간
+    PAUSE_THRESHOLD = 0.8
+
     def analyze(
         self,
         segments: list[dict],
@@ -8,141 +11,177 @@ class SpeechAnalyzer:
         if not segments:
             return {
                 "word_count": 0,
+                "presentation_duration": 0,
                 "speaking_time": 0,
-                "speech_rate_wpm": 0,
-                "silence_time": 0,
-                "silence_ratio": 0,
+                "pause_time": 0,
+                "pause_ratio": 0,
+                "speech_rate": 0,
+                "pauses": [],
             }
 
         word_count = self._count_words(
             segments
         )
 
-        speaking_time = sum(
-            max(
-                segment["end"]
-                - segment["start"],
-                0,
-            )
-            for segment in segments
-        )
-
-        silence_gaps = self._silence_gaps(
-            segments
-        )
-
-        silence_time = sum(
-            gap["duration"]
-            for gap in silence_gaps
-        )
-
-        if speaking_time > 0:
-
-            speech_rate = (
-                word_count
-                / speaking_time
-                * 60
-            )
-
-        else:
-
-            speech_rate = 0
-
-        total_duration = (
-            max(
-                segment["end"]
-                for segment in segments
+        speech_intervals = (
+            self._collect_speech_intervals(
+                segments
             )
         )
 
-        silence_ratio = (
-            silence_time / total_duration
-            if total_duration > 0
+        if not speech_intervals:
+            return {
+                "word_count": word_count,
+                "presentation_duration": 0,
+                "speaking_time": 0,
+                "pause_time": 0,
+                "pause_ratio": 0,
+                "speech_rate": 0,
+                "pauses": [],
+            }
+
+        pauses = self._find_pauses(
+            speech_intervals
+        )
+
+        first_speech = (
+            speech_intervals[0]["start"]
+        )
+
+        last_speech = (
+            speech_intervals[-1]["end"]
+        )
+
+        presentation_duration = (
+            last_speech - first_speech
+        )
+
+        pause_time = sum(
+            pause["duration"]
+            for pause in pauses
+        )
+
+        speaking_time = max(
+            presentation_duration
+            - pause_time,
+            0,
+        )
+
+        speech_rate = (
+            word_count
+            / speaking_time
+            * 60
+            if speaking_time > 0
+            else 0
+        )
+
+        pause_ratio = (
+            pause_time
+            / presentation_duration
+            if presentation_duration > 0
             else 0
         )
 
         return {
             "word_count": word_count,
+
+            "presentation_duration": round(
+                presentation_duration,
+                2,
+            ),
+
             "speaking_time": round(
                 speaking_time,
                 2,
             ),
-            "speech_rate_wpm": round(
+
+            "pause_time": round(
+                pause_time,
+                2,
+            ),
+
+            "pause_ratio": round(
+                pause_ratio,
+                3,
+            ),
+
+            # 한국어이므로 WPM보다는
+            # 어절/분으로 보는 것이 적절
+            "speech_rate": round(
                 speech_rate,
                 2,
             ),
-            "silence_time": round(
-                silence_time,
-                2,
-            ),
-            "silence_ratio": round(
-                silence_ratio,
-                3,
-            ),
+
+            "pauses": pauses,
         }
+
+    # ==============================================
+    # Kiwi로 만든 normalized_words 개수
+    # ==============================================
 
     def _count_words(
         self,
         segments: list[dict],
     ) -> int:
 
-        count = 0
-
-        for segment in segments:
-
-            normalized_words = segment.get(
-                "normalized_words",
-                []
+        return sum(
+            len(
+                segment.get(
+                    "normalized_words",
+                    [],
+                )
             )
+            for segment in segments
+        )
 
-            count += len(normalized_words)
+    # ==============================================
+    # SenseVoice 세부 timestamp 수집
+    # ==============================================
 
-        return count
-
-    def _silence_gaps(
+    def _collect_speech_intervals(
         self,
         segments: list[dict],
     ) -> list[dict]:
 
-        gaps = []
-
-        speech_intervals = []
-
-        # --------------------------------
-        # 모든 세부 발화 구간 수집
-        # --------------------------------
+        intervals = []
 
         for segment in segments:
 
-            timestamps = segment.get(
+            for timestamp in segment.get(
                 "timestamps",
-                []
-            )
+                [],
+            ):
 
-            for timestamp in timestamps:
-
-                speech_intervals.append(
+                intervals.append(
                     {
-                        "start": timestamp["start"],
-                        "end": timestamp["end"],
+                        "start": timestamp[
+                            "start"
+                        ],
+                        "end": timestamp[
+                            "end"
+                        ],
                     }
                 )
 
-        # --------------------------------
-        # 시간순 정렬
-        # --------------------------------
-
-        speech_intervals.sort(
-            key=lambda x: x["start"]
+        return sorted(
+            intervals,
+            key=lambda x: x["start"],
         )
 
-        # --------------------------------
-        # 발화 사이의 침묵 계산
-        # --------------------------------
+    # ==============================================
+    # 발표 도중 pause 탐지
+    # ==============================================
+
+    def _find_pauses(
+        self,
+        intervals: list[dict],
+    ) -> list[dict]:
+
+        pauses = []
 
         for previous, current in zip(
-            speech_intervals,
-            speech_intervals[1:],
+            intervals,
+            intervals[1:],
         ):
 
             gap = (
@@ -150,12 +189,18 @@ class SpeechAnalyzer:
                 - previous["end"]
             )
 
-            if gap >= 1.0:
+            if gap >= self.PAUSE_THRESHOLD:
 
-                gaps.append(
+                pauses.append(
                     {
-                        "start": previous["end"],
-                        "end": current["start"],
+                        "start": round(
+                            previous["end"],
+                            3,
+                        ),
+                        "end": round(
+                            current["start"],
+                            3,
+                        ),
                         "duration": round(
                             gap,
                             3,
@@ -163,4 +208,4 @@ class SpeechAnalyzer:
                     }
                 )
 
-        return gaps
+        return pauses
