@@ -11,7 +11,6 @@ from app.services.coaching_service import (
 
 load_dotenv()
 
-
 audio_path = "audio/test.wav"
 
 
@@ -27,16 +26,14 @@ analysis_result = (
     )
 )
 
-print(
-    "Analysis complete!"
-)
+print("Analysis complete!")
 
 
 print("\nLoading CoachingService...")
 
 coaching_service = CoachingService()
 
-print("Generating coaching...")
+print("Generating Gemini coaching...")
 
 coaching = (
     coaching_service.generate(
@@ -46,7 +43,7 @@ coaching = (
 
 
 print(
-    "\n===== AI COACHING ====="
+    "\n===== GEMINI COACHING ====="
 )
 
 print(
