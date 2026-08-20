@@ -1,9 +1,11 @@
 class RiskAnalyzer:
     WINDOW_SIZE = 10
+    MIN_LAST_WINDOW = 3.0
 
     def analyze(
         self,
         duration: float,
+        segments: list[dict],
         speech_result: dict,
         filler_result: list[dict],
     ) -> dict:
@@ -15,19 +17,17 @@ class RiskAnalyzer:
                 "heatmap": [],
             }
 
+        windows = self._build_windows(
+            duration
+        )
+
         heatmap = []
 
-        window_start = 0.0
-
-        while window_start < duration:
-            window_end = min(
-                window_start + self.WINDOW_SIZE,
-                duration,
-            )
-
+        for window in windows:
             window_result = self._analyze_window(
-                start=window_start,
-                end=window_end,
+                start=window["start"],
+                end=window["end"],
+                segments=segments,
                 speech_result=speech_result,
                 filler_result=filler_result,
             )
@@ -36,14 +36,16 @@ class RiskAnalyzer:
                 window_result
             )
 
-            window_start += self.WINDOW_SIZE
-
-        overall_score = self._calculate_overall_score(
-            heatmap
+        overall_score = (
+            self._calculate_overall_score(
+                heatmap
+            )
         )
 
-        overall_level = self._score_to_level(
-            overall_score
+        overall_level = (
+            self._score_to_level(
+                overall_score
+            )
         )
 
         return {
@@ -52,10 +54,66 @@ class RiskAnalyzer:
             "heatmap": heatmap,
         }
 
+    # ==========================================
+    # Window 생성
+    # ==========================================
+
+    def _build_windows(
+        self,
+        duration: float,
+    ) -> list[dict]:
+
+        windows = []
+
+        start = 0.0
+
+        while start < duration:
+            end = min(
+                start + self.WINDOW_SIZE,
+                duration,
+            )
+
+            windows.append(
+                {
+                    "start": start,
+                    "end": end,
+                }
+            )
+
+            start += self.WINDOW_SIZE
+
+        # 마지막 window가 너무 짧으면
+        # 이전 window와 병합
+        if len(windows) >= 2:
+
+            last = windows[-1]
+
+            last_duration = (
+                last["end"]
+                - last["start"]
+            )
+
+            if (
+                last_duration
+                < self.MIN_LAST_WINDOW
+            ):
+                windows[-2]["end"] = (
+                    last["end"]
+                )
+
+                windows.pop()
+
+        return windows
+
+    # ==========================================
+    # Window 분석
+    # ==========================================
+
     def _analyze_window(
         self,
         start: float,
         end: float,
+        segments: list[dict],
         speech_result: dict,
         filler_result: list[dict],
     ) -> dict:
@@ -63,18 +121,117 @@ class RiskAnalyzer:
         score = 0
         reasons = []
 
-        # ==========================================
-        # 1. Pause 분석
-        # ==========================================
+        # ======================================
+        # 1. 구간별 어절
+        # ======================================
+
+        words = self._get_words_in_window(
+            segments,
+            start,
+            end,
+        )
+
+        word_count = len(words)
+
+        # ======================================
+        # 2. 구간별 Pause
+        # ======================================
 
         pauses = self._get_pauses_in_window(
-            pauses=speech_result.get(
+            speech_result.get(
                 "internal_pauses",
                 [],
             ),
-            start=start,
-            end=end,
+            start,
+            end,
         )
+
+        pause_time = sum(
+            self._get_overlap_duration(
+                pause["start"],
+                pause["end"],
+                start,
+                end,
+            )
+            for pause in pauses
+        )
+
+        window_duration = (
+            end - start
+        )
+
+        # ======================================
+        # 3. 시작/종료 무음 고려
+        # ======================================
+
+        non_speech_edge_time = 0.0
+
+        leading_silence = speech_result.get(
+            "leading_silence",
+            0,
+        )
+
+        trailing_silence = speech_result.get(
+            "trailing_silence",
+            0,
+        )
+
+        total_duration = speech_result.get(
+            "duration",
+            end,
+        )
+
+        if start <= 0:
+            non_speech_edge_time += (
+                self._get_overlap_duration(
+                    0,
+                    leading_silence,
+                    start,
+                    end,
+                )
+            )
+
+        if trailing_silence > 0:
+            trailing_start = (
+                total_duration
+                - trailing_silence
+            )
+
+            non_speech_edge_time += (
+                self._get_overlap_duration(
+                    trailing_start,
+                    total_duration,
+                    start,
+                    end,
+                )
+            )
+
+        # ======================================
+        # 4. 실제 발화 시간
+        # ======================================
+
+        speech_time = max(
+            window_duration
+            - pause_time
+            - non_speech_edge_time,
+            0,
+        )
+
+        # ======================================
+        # 5. 구간별 말하기 속도
+        # ======================================
+
+        speech_rate = (
+            word_count
+            / speech_time
+            * 60
+            if speech_time > 0
+            else 0
+        )
+
+        # ======================================
+        # 6. Pause 위험도
+        # ======================================
 
         pause_count = len(pauses)
 
@@ -100,11 +257,10 @@ class RiskAnalyzer:
             score += 15
 
             reasons.append(
-                f"짧은 구간에 pause가 "
-                f"{pause_count}회 발생"
+                f"pause가 {pause_count}회 발생"
             )
 
-        if long_pauses:
+        if len(long_pauses) >= 1:
             score += 15
 
             reasons.append(
@@ -112,7 +268,7 @@ class RiskAnalyzer:
                 f"{len(long_pauses)}회"
             )
 
-        if very_long_pauses:
+        if len(very_long_pauses) >= 1:
             score += 20
 
             reasons.append(
@@ -120,9 +276,9 @@ class RiskAnalyzer:
                 f"{len(very_long_pauses)}회"
             )
 
-        # ==========================================
-        # 2. 추임새 / 반복 분석
-        # ==========================================
+        # ======================================
+        # 7. 추임새 / 반복
+        # ======================================
 
         window_occurrences = []
 
@@ -143,7 +299,8 @@ class RiskAnalyzer:
 
         filler_count = sum(
             1
-            for occurrence in window_occurrences
+            for occurrence
+            in window_occurrences
             if occurrence.get(
                 "type"
             ) == "filler"
@@ -151,13 +308,21 @@ class RiskAnalyzer:
 
         repetition_count = sum(
             1
-            for occurrence in window_occurrences
+            for occurrence
+            in window_occurrences
             if occurrence.get(
                 "type"
             ) == "repetition"
         )
 
-        if filler_count >= 2:
+        if filler_count == 1:
+            score += 5
+
+            reasons.append(
+                "추임새 1회"
+            )
+
+        elif filler_count >= 2:
             score += 15
 
             reasons.append(
@@ -167,27 +332,32 @@ class RiskAnalyzer:
         if filler_count >= 4:
             score += 10
 
-        if repetition_count >= 1:
-            score += 15
+        if repetition_count == 1:
+            score += 10
+
+            reasons.append(
+                "반복 표현 1회"
+            )
+
+        elif repetition_count >= 2:
+            score += 20
 
             reasons.append(
                 f"반복 표현 "
                 f"{repetition_count}회"
             )
 
-        if repetition_count >= 2:
-            score += 10
+        # ======================================
+        # 8. 구간별 말하기 속도 위험도
+        # ======================================
 
-        # ==========================================
-        # 3. 말하기 속도
-        # ==========================================
+        # 어절이 너무 적은 구간은
+        # 속도 판정을 하지 않음
+        if (
+            word_count >= 3
+            and speech_time >= 2.0
+        ):
 
-        speech_rate = speech_result.get(
-            "speech_rate",
-            0,
-        )
-
-        if speech_rate > 0:
             if speech_rate < 70:
                 score += 15
 
@@ -204,9 +374,9 @@ class RiskAnalyzer:
                     f"({speech_rate:.1f} 어절/분)"
                 )
 
-        # ==========================================
-        # 4. 점수 제한 및 레벨
-        # ==========================================
+        # ======================================
+        # 9. 점수 제한
+        # ======================================
 
         score = min(
             score,
@@ -228,9 +398,27 @@ class RiskAnalyzer:
                 2,
             ),
 
-            "score": score,
+            "duration": round(
+                window_duration,
+                2,
+            ),
 
-            "level": level,
+            "word_count": word_count,
+
+            "speech_time": round(
+                speech_time,
+                2,
+            ),
+
+            "speech_rate": round(
+                speech_rate,
+                2,
+            ),
+
+            "pause_time": round(
+                pause_time,
+                2,
+            ),
 
             "pause_count": pause_count,
 
@@ -248,8 +436,67 @@ class RiskAnalyzer:
                 repetition_count
             ),
 
+            "score": score,
+
+            "level": level,
+
             "reasons": reasons,
         }
+
+    # ==========================================
+    # Window 안 어절 찾기
+    # ==========================================
+
+    def _get_words_in_window(
+        self,
+        segments: list[dict],
+        start: float,
+        end: float,
+    ) -> list[dict]:
+
+        result = []
+
+        for segment in segments:
+
+            normalized_words = (
+                segment.get(
+                    "normalized_words",
+                    [],
+                )
+            )
+
+            for word in normalized_words:
+
+                word_start = word.get(
+                    "start"
+                )
+
+                word_end = word.get(
+                    "end"
+                )
+
+                if (
+                    word_start is None
+                    or word_end is None
+                ):
+                    continue
+
+                # 어절 시작 시간을 기준으로
+                # window에 배정
+                if (
+                    start
+                    <= word_start
+                    < end
+                ):
+                    result.append(
+                        word
+                    )
+
+        return result
+
+    # ==========================================
+    # Window 안 pause 찾기
+    # ==========================================
 
     def _get_pauses_in_window(
         self,
@@ -261,6 +508,7 @@ class RiskAnalyzer:
         result = []
 
         for pause in pauses:
+
             pause_start = pause.get(
                 "start",
                 0,
@@ -271,7 +519,6 @@ class RiskAnalyzer:
                 0,
             )
 
-            # pause가 현재 window와 조금이라도 겹치면 포함
             if (
                 pause_end > start
                 and pause_start < end
@@ -282,6 +529,38 @@ class RiskAnalyzer:
 
         return result
 
+    # ==========================================
+    # 두 시간 구간이 겹치는 길이
+    # ==========================================
+
+    def _get_overlap_duration(
+        self,
+        item_start: float,
+        item_end: float,
+        window_start: float,
+        window_end: float,
+    ) -> float:
+
+        overlap_start = max(
+            item_start,
+            window_start,
+        )
+
+        overlap_end = min(
+            item_end,
+            window_end,
+        )
+
+        return max(
+            overlap_end
+            - overlap_start,
+            0,
+        )
+
+    # ==========================================
+    # 전체 점수
+    # ==========================================
+
     def _calculate_overall_score(
         self,
         heatmap: list[dict],
@@ -290,19 +569,34 @@ class RiskAnalyzer:
         if not heatmap:
             return 0
 
-        scores = [
-            window["score"]
-            for window in heatmap
-        ]
+        weighted_score = 0.0
+        total_duration = 0.0
 
-        average_score = (
-            sum(scores)
-            / len(scores)
-        )
+        for window in heatmap:
+
+            duration = window.get(
+                "duration",
+                0,
+            )
+
+            weighted_score += (
+                window["score"]
+                * duration
+            )
+
+            total_duration += duration
+
+        if total_duration <= 0:
+            return 0
 
         return round(
-            average_score
+            weighted_score
+            / total_duration
         )
+
+    # ==========================================
+    # 위험 수준
+    # ==========================================
 
     def _score_to_level(
         self,

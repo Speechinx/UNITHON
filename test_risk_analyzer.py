@@ -78,7 +78,13 @@ risk_analyzer = RiskAnalyzer()
 
 risk_result = risk_analyzer.analyze(
     duration=speech_result["duration"],
+
+    segments=sensevoice_result[
+        "segments"
+    ],
+
     speech_result=speech_result,
+
     filler_result=filler_result,
 )
 
@@ -156,7 +162,7 @@ print(
 )
 
 print(
-    "말하기 속도:",
+    "전체 평균 말하기 속도:",
     speech_result["speech_rate"],
     "어절/분"
 )
@@ -171,16 +177,20 @@ print(
 )
 
 if not filler_result:
+
     print(
         "탐지된 추임새/반복 없음"
     )
 
 else:
+
     for occurrence in filler_result:
 
-        occurrence_type = occurrence.get(
-            "type",
-            "unknown",
+        occurrence_type = (
+            occurrence.get(
+                "type",
+                "unknown",
+            )
         )
 
         text = occurrence.get(
@@ -250,13 +260,32 @@ for window in risk_result[
     )
 
     print(
-        "점수:",
-        window["score"]
+        "구간 길이:",
+        window["duration"],
+        "초"
     )
 
     print(
-        "수준:",
-        window["level"]
+        "어절 수:",
+        window["word_count"]
+    )
+
+    print(
+        "실제 발화 시간:",
+        window["speech_time"],
+        "초"
+    )
+
+    print(
+        "구간 말하기 속도:",
+        window["speech_rate"],
+        "어절/분"
+    )
+
+    print(
+        "Pause 시간:",
+        window["pause_time"],
+        "초"
     )
 
     print(
@@ -293,17 +322,32 @@ for window in risk_result[
         "회"
     )
 
-    print("위험 이유:")
+    print(
+        "위험 점수:",
+        window["score"]
+    )
+
+    print(
+        "위험 수준:",
+        window["level"]
+    )
+
+    print(
+        "위험 이유:"
+    )
 
     if not window["reasons"]:
+
         print(
             "- 특이사항 없음"
         )
 
     else:
+
         for reason in window[
             "reasons"
         ]:
+
             print(
                 "-",
                 reason
