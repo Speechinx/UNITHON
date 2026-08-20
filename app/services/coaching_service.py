@@ -1,20 +1,27 @@
 import json
 import os
 
-from openai import OpenAI
+from google import genai
 
 
 class CoachingService:
     def __init__(self):
-        self.client = OpenAI(
-            api_key=os.getenv(
-                "OPENAI_API_KEY"
+        api_key = os.getenv(
+            "GEMINI_API_KEY"
+        )
+
+        if not api_key:
+            raise ValueError(
+                "GEMINI_API_KEY가 설정되지 않았습니다."
             )
+
+        self.client = genai.Client(
+            api_key=api_key
         )
 
         self.model = os.getenv(
-            "OPENAI_MODEL",
-            "gpt-5.6-luna",
+            "GEMINI_MODEL",
+            "gemini-3.1-flash-lite",
         )
 
     def generate(
@@ -33,13 +40,18 @@ class CoachingService:
         )
 
         response = (
-            self.client.responses.create(
+            self.client.models.generate_content(
                 model=self.model,
-                input=prompt,
+                contents=prompt,
             )
         )
 
-        return response.output_text.strip()
+        if not response.text:
+            return (
+                "코칭 결과를 생성하지 못했습니다."
+            )
+
+        return response.text.strip()
 
     def _build_coaching_data(
         self,
@@ -61,9 +73,6 @@ class CoachingService:
             [],
         )
 
-        # GPT에게 불필요하게 거대한
-        # normalized_words / timestamp 원본까지
-        # 전부 넘기지 않는다.
         return {
             "transcript": (
                 analysis_result.get(
@@ -72,7 +81,7 @@ class CoachingService:
                 )
             ),
 
-            # 감정은 보조 신호일 뿐
+            # SenseVoice 감정은 참고 신호
             "emotion_signal": (
                 analysis_result.get(
                     "emotion",
@@ -171,26 +180,22 @@ class CoachingService:
         return f"""
 너는 한국어 발표 코칭 AI다.
 
-아래 데이터는 음성을 이미 분석한 결과다.
-숫자나 이벤트를 새로 추측하지 말고
-제공된 분석 결과를 근거로만 코칭하라.
+아래 데이터는 발표 음성을 이미 분석한 결과다.
 
 중요 규칙:
 
-1. speech_rate는 한국어 '어절/분'이다.
-2. filler는 추임새다.
-3. repetition은 반복 표현이다.
-4. pause는 실제 WAV 음량 분석으로 탐지된 발표 중 멈춤이다.
-5. risk heatmap은 10초 단위 발표 위험 분석이다.
-6. emotion_signal은 SenseVoice의 보조 신호일 뿐이다.
-   사용자의 실제 감정을 단정하지 마라.
-7. 단순히 점수를 나열하지 말고
-   발표자가 다음 연습에서 무엇을 바꾸면 되는지 설명하라.
-8. 과도하게 부정적인 표현은 피하고,
-   구체적이고 실행 가능한 피드백을 제공하라.
-9. 분석 데이터에 없는 사실은 만들지 마라.
-10. transcript의 발표 내용 자체를 비판하기보다
-    전달 방식과 발표 습관을 중심으로 코칭하라.
+1. 제공된 분석 결과를 근거로만 코칭하라.
+2. 숫자나 이벤트를 새로 추측하지 마라.
+3. speech_rate는 한국어 어절/분이다.
+4. filler는 추임새다.
+5. repetition은 반복 표현이다.
+6. pause는 WAV 음량 분석으로 탐지된 발표 중 멈춤이다.
+7. risk heatmap은 10초 단위 분석 결과다.
+8. emotion_signal은 SenseVoice의 참고 신호일 뿐이다.
+   발표자의 실제 감정을 단정하지 마라.
+9. 발표 내용 자체보다는 전달 방식과 발표 습관을 코칭하라.
+10. 문제를 나열하는 데서 끝내지 말고
+    다음 연습에서 어떻게 바꿀지 구체적으로 제안하라.
 
 다음 형식으로 한국어로 답하라.
 
@@ -202,10 +207,10 @@ class CoachingService:
 
 [개선할 점]
 - 최대 3개
-- 가능하면 문제가 발생한 시간 구간을 언급
+- 가능한 경우 문제가 발생한 시간 구간 언급
 
 [다음 연습 목표]
-- 가장 중요한 행동 3개
+- 행동 중심으로 3개
 
 [한 줄 코칭]
 짧고 기억하기 쉬운 한 문장
