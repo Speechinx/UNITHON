@@ -344,11 +344,11 @@ class CoachingService:
 8. presentation_rate나 articulation_rate 숫자를 보고
    pace_level 판정을 임의로 변경하지 마라.
 
-9. articulation_rate가 정상적으로 보이더라도
-   presentation_rate가 느리고 pace_level이 slow라면
-   "실제로 말을 할 때의 속도와 달리,
-   잦은 pause 때문에 전체 발표 템포가 느려졌다"
-   정도로 설명할 수 있다.
+9. articulation_rate와 presentation_rate의 판정이 다르게 보이더라도 
+발표 속도의 최종 판정은 반드시 pace_level을 따른다.
+예를 들어 articulation_rate가 상대적으로 높더라도
+presentation_rate가 낮고 pace_level이 slow라면
+잦은 pause로 인해 전체 발표 템포가 느려졌다고 설명할 수 있다.
 
 
 [Pause]
