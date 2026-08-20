@@ -68,6 +68,8 @@ class RiskWindow(
     filler_count: int
     repetition_count: int
 
+    emotion_signal: str
+
     score: int
     level: str
 
