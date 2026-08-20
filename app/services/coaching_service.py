@@ -2,6 +2,7 @@ import json
 import os
 
 from google import genai
+from google.genai import types
 
 
 class CoachingService:
@@ -27,7 +28,7 @@ class CoachingService:
     def generate(
         self,
         analysis_result: dict,
-    ) -> str:
+    ) -> dict:
 
         coaching_data = (
             self._build_coaching_data(
@@ -43,15 +44,92 @@ class CoachingService:
             self.client.models.generate_content(
                 model=self.model,
                 contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type=(
+                        "application/json"
+                    ),
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "summary": {
+                                "type": "string"
+                            },
+
+                            "strengths": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                            },
+
+                            "improvements": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string"
+                                        },
+
+                                        "time_range": {
+                                            "type": "string"
+                                        },
+
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                    },
+
+                                    "required": [
+                                        "title",
+                                        "time_range",
+                                        "description",
+                                    ],
+                                },
+                            },
+
+                            "practice_goals": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                            },
+
+                            "one_line_coaching": {
+                                "type": "string"
+                            },
+                        },
+
+                        "required": [
+                            "summary",
+                            "strengths",
+                            "improvements",
+                            "practice_goals",
+                            "one_line_coaching",
+                        ],
+                    },
+                ),
             )
         )
 
         if not response.text:
-            return (
+            return self._empty_result(
                 "코칭 결과를 생성하지 못했습니다."
             )
 
-        return response.text.strip()
+        try:
+            result = json.loads(
+                response.text
+            )
+
+        except json.JSONDecodeError:
+            return self._empty_result(
+                "Gemini 응답을 JSON으로 변환하지 못했습니다."
+            )
+
+        return self._validate_result(
+            result
+        )
 
     def _build_coaching_data(
         self,
@@ -81,7 +159,6 @@ class CoachingService:
                 )
             ),
 
-            # 참고 신호일 뿐 실제 감정으로 단정 금지
             "emotion_signal": (
                 analysis_result.get(
                     "emotion",
@@ -111,7 +188,6 @@ class CoachingService:
                     )
                 ),
 
-                # 청중이 체감하는 발표 템포
                 "presentation_rate": (
                     speech.get(
                         "presentation_rate",
@@ -119,7 +195,6 @@ class CoachingService:
                     )
                 ),
 
-                # 실제 음성을 낼 때의 발화 속도
                 "articulation_rate": (
                     speech.get(
                         "articulation_rate",
@@ -127,7 +202,6 @@ class CoachingService:
                     )
                 ),
 
-                # 우리 분석 엔진이 이미 판정한 값
                 "pace_level": (
                     speech.get(
                         "pace_level",
@@ -347,17 +421,18 @@ class CoachingService:
 31. 객관적으로 확인 가능한 장점이 없다면
     억지로 장점을 만들지 마라.
 
-32. 명확한 장점이 없는 경우에는 다음과 같이 작성할 수 있다.
+32. 명확한 장점이 없는 경우에는
+    strengths 배열에 다음 문장 하나만 넣을 수 있다.
 
-    - 현재 분석 데이터에서는 뚜렷한 강점을 판단하기 어렵습니다.
+    "현재 분석 데이터에서는 뚜렷한 강점을 판단하기 어렵습니다."
 
-33. 잘한 점은 반드시 3개를 채울 필요가 없다.
+33. strengths는 반드시 3개를 채울 필요가 없다.
     0~3개까지 작성할 수 있다.
 
 
 [개선 조언]
 
-34. 개선할 점은 최대 3개만 제시하라.
+34. improvements는 최대 3개만 작성하라.
 
 35. 가장 중요한 문제부터 우선순위를 정하라.
 
@@ -378,33 +453,145 @@ class CoachingService:
 - 자연스럽게 말하세요.
 
 
-[출력 형식]
+[JSON 출력 규칙]
 
-반드시 다음 형식으로 한국어로 답하라.
+38. 반드시 JSON 객체 하나만 반환하라.
 
-[종합 평가]
-2~3문장.
-가장 중요한 발표 특성을 요약한다.
+39. Markdown 코드블록을 사용하지 마라.
 
-[잘한 점]
-- 객관적으로 확인 가능한 내용만 작성
-- 최대 3개
-- 없다면 "현재 분석 데이터에서는 뚜렷한 강점을 판단하기 어렵습니다."라고 작성
+40. JSON 앞뒤에 설명 문장을 붙이지 마라.
 
-[개선할 점]
-- 최대 3개
-- 가능하면 실제 시간 구간을 함께 언급
-- 분석 데이터에 있는 근거를 중심으로 설명
+41. 다음 필드를 반드시 포함하라.
 
-[다음 연습 목표]
-- 구체적인 행동 중심으로 정확히 3개
+- summary
+- strengths
+- improvements
+- practice_goals
+- one_line_coaching
 
-[한 줄 코칭]
-- 짧고 기억하기 쉬운 한 문장
-- 분석 결과와 직접 연결된 조언
+42. summary는 문자열이며
+    종합 평가를 2~3문장으로 작성한다.
+
+43. strengths는 문자열 배열이다.
+    객관적으로 확인 가능한 장점만 최대 3개 작성한다.
+
+44. improvements는 객체 배열이며
+    최대 3개 작성한다.
+
+각 improvement는 반드시 다음 필드를 가진다.
+
+- title
+- time_range
+- description
+
+45. title은 짧은 문제 제목이다.
+
+예:
+"반복 표현 줄이기"
+"추임새 줄이기"
+"발표 템포 개선"
+
+46. time_range는
+    문제가 발생한 시간을 표현한다.
+
+예:
+"0~10초"
+"13~16초"
+
+정확한 시간 범위를 판단하기 어렵다면
+빈 문자열 ""로 작성한다.
+
+47. description은
+    문제의 근거와 개선 방법을 함께 설명한다.
+
+48. practice_goals는 문자열 배열이며
+    실제 수행 가능한 연습 행동을 정확히 3개 작성한다.
+
+49. one_line_coaching은
+    짧고 기억하기 쉬운 한 문장으로 작성한다.
+
+50. 모든 문자열은 한국어로 작성한다.
+
+
+반환 JSON 형태는 반드시 다음 구조를 따른다.
+
+{{
+    "summary": "종합 평가",
+    "strengths": [
+        "객관적으로 확인 가능한 강점"
+    ],
+    "improvements": [
+        {{
+            "title": "개선 항목 제목",
+            "time_range": "0~10초",
+            "description": "문제의 근거와 구체적인 개선 방법"
+        }}
+    ],
+    "practice_goals": [
+        "연습 목표 1",
+        "연습 목표 2",
+        "연습 목표 3"
+    ],
+    "one_line_coaching": "한 줄 코칭"
+}}
 
 
 분석 결과:
 
 {data_json}
 """
+
+    def _validate_result(
+        self,
+        result: dict,
+    ) -> dict:
+
+        return {
+            "summary": (
+                result.get(
+                    "summary",
+                    "",
+                )
+            ),
+
+            "strengths": (
+                result.get(
+                    "strengths",
+                    [],
+                )
+            ),
+
+            "improvements": (
+                result.get(
+                    "improvements",
+                    [],
+                )
+            ),
+
+            "practice_goals": (
+                result.get(
+                    "practice_goals",
+                    [],
+                )
+            ),
+
+            "one_line_coaching": (
+                result.get(
+                    "one_line_coaching",
+                    "",
+                )
+            ),
+        }
+
+    def _empty_result(
+        self,
+        message: str,
+    ) -> dict:
+
+        return {
+            "summary": message,
+            "strengths": [],
+            "improvements": [],
+            "practice_goals": [],
+            "one_line_coaching": "",
+        }

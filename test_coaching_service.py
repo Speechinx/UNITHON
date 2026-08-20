@@ -1,3 +1,5 @@
+import json
+
 from dotenv import load_dotenv
 
 from app.services.analysis_service import (
@@ -43,7 +45,7 @@ print(
 
 
 # ==========================================
-# Gemini 호출 전 핵심 데이터 확인
+# Gemini 호출 전 데이터
 # ==========================================
 
 speech = analysis_result[
@@ -51,7 +53,7 @@ speech = analysis_result[
 ]
 
 print(
-    "\n===== DATA SENT TO GEMINI ====="
+    "\n===== ANALYSIS SUMMARY ====="
 )
 
 print(
@@ -123,10 +125,127 @@ coaching = (
 )
 
 
+# ==========================================
+# Raw JSON
+# ==========================================
+
 print(
-    "\n===== GEMINI COACHING ====="
+    "\n===== COACHING JSON ====="
 )
 
 print(
-    coaching
+    json.dumps(
+        coaching,
+        ensure_ascii=False,
+        indent=2,
+    )
+)
+
+
+# ==========================================
+# 프론트에서 사용할 형태로 출력
+# ==========================================
+
+print(
+    "\n===== SUMMARY ====="
+)
+
+print(
+    coaching[
+        "summary"
+    ]
+)
+
+
+print(
+    "\n===== STRENGTHS ====="
+)
+
+if not coaching[
+    "strengths"
+]:
+
+    print(
+        "없음"
+    )
+
+else:
+
+    for strength in coaching[
+        "strengths"
+    ]:
+
+        print(
+            "-",
+            strength
+        )
+
+
+print(
+    "\n===== IMPROVEMENTS ====="
+)
+
+if not coaching[
+    "improvements"
+]:
+
+    print(
+        "없음"
+    )
+
+else:
+
+    for improvement in coaching[
+        "improvements"
+    ]:
+
+        print(
+            "\n제목:",
+            improvement.get(
+                "title",
+                "",
+            )
+        )
+
+        print(
+            "시간:",
+            improvement.get(
+                "time_range"
+            )
+        )
+
+        print(
+            "설명:",
+            improvement.get(
+                "description",
+                "",
+            )
+        )
+
+
+print(
+    "\n===== PRACTICE GOALS ====="
+)
+
+for index, goal in enumerate(
+    coaching[
+        "practice_goals"
+    ],
+    start=1,
+):
+
+    print(
+        f"{index}.",
+        goal
+    )
+
+
+print(
+    "\n===== ONE LINE COACHING ====="
+)
+
+print(
+    coaching[
+        "one_line_coaching"
+    ]
 )
