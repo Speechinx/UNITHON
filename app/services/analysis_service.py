@@ -2,6 +2,10 @@ from app.services.sensevoice import (
     SenseVoiceService
 )
 
+from app.services.strength_analyzer import (
+    StrengthAnalyzer
+)
+
 from app.services.speech_analyzer import (
     SpeechAnalyzer
 )
@@ -35,6 +39,10 @@ class AnalysisService:
 
         self.risk_analyzer = (
             RiskAnalyzer()
+        )
+
+        self.strength_analyzer = (
+            StrengthAnalyzer()
         )
 
         # 기존 SenseVoice 모델 공유
@@ -136,6 +144,24 @@ class AnalysisService:
         )
 
         # ==========================================
+        # 7. 긍정 신호 분석
+        # ==========================================
+
+        strength_signals = (
+            self.strength_analyzer.analyze(
+                speech_result=(
+                    speech_result
+                ),
+                filler_result=(
+                    filler_result
+                ),
+                risk_result=(
+                    risk_result
+                ),
+            )
+        )
+
+        # ==========================================
         # 최종 반환
         # ==========================================
 
@@ -181,6 +207,10 @@ class AnalysisService:
             # 필요하면 디버깅에서도 확인 가능
             "emotion_windows": (
                 emotion_windows
+            ),
+
+            "strength_signals": (
+                strength_signals
             ),
         }
 
