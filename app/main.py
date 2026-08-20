@@ -1,27 +1,27 @@
+from dotenv import load_dotenv
+
+# .env 파일을 먼저 로드
+load_dotenv()
+
 from fastapi import FastAPI
 
 from app.api.routes import router
-from app.core.config import settings
 
 
 app = FastAPI(
-    title=settings.app_name,
-    version=settings.app_version,
+    title="AI Presentation Coach API",
+    description="발표 음성을 분석하고 AI 코칭 결과를 반환합니다.",
+    version="1.0.0",
 )
 
 
 app.include_router(
-    router,
-    prefix="/api",
+    router
 )
 
 
 @app.get("/")
 def root():
-
     return {
-        "message": (
-            "Presentation Coach AI API"
-        ),
-        "version": settings.app_version,
+        "message": "AI Presentation Coach API is running."
     }

@@ -379,20 +379,3 @@ print(
         "one_line_coaching"
     ]
 )
-
-
-# ==========================================
-# 최종 JSON 전체 출력
-# ==========================================
-
-print(
-    "\n===== FINAL JSON ====="
-)
-
-print(
-    json.dumps(
-        result,
-        ensure_ascii=False,
-        indent=2,
-    )
-)

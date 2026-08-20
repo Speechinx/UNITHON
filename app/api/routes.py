@@ -1,323 +1,271 @@
 import os
 import shutil
-import uuid
+import tempfile
+
+from app.schemas.analysis_response import (
+    AnalysisResponse
+)
 
 from fastapi import (
     APIRouter,
     File,
-    UploadFile,
     HTTPException,
+    UploadFile,
 )
 
-from app.services.sensevoice import (
-    SenseVoiceService,
-)
-
-from app.services.filler_analyzer import (
-    FillerAnalyzer,
-)
-
-from app.services.speech_analyzer import (
-    SpeechAnalyzer,
-)
-
-from app.services.risk_analyzer import (
-    RiskAnalyzer,
+from app.services.presentation_analysis_service import (
+    PresentationAnalysisService
 )
 
 
 router = APIRouter()
 
 
-sensevoice_service = SenseVoiceService()
-
-filler_analyzer = FillerAnalyzer()
-
-speech_analyzer = SpeechAnalyzer()
-
-risk_analyzer = RiskAnalyzer()
+# 서버 시작 후 최초 요청 시 모델이 로딩됨
+presentation_service = None
 
 
-AUDIO_DIR = "audio"
+def get_presentation_service():
+    global presentation_service
 
-os.makedirs(
-    AUDIO_DIR,
-    exist_ok=True,
-)
-
-
-@router.get("/health")
-def health():
-
-    return {
-        "status": "ok",
-        "service": "presentation-coach-ai",
-    }
-
-
-@router.post("/analyze")
-async def analyze_audio(
-    file: UploadFile = File(...),
-):
-
-    if not file.filename:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Audio file is required.",
+    if presentation_service is None:
+        presentation_service = (
+            PresentationAnalysisService()
         )
 
-    extension = os.path.splitext(
+    return presentation_service
+
+
+@router.post(
+    "/analyze",
+    response_model=AnalysisResponse,
+)
+async def analyze_presentation(
+    file: UploadFile = File(...)
+):
+
+    # ==========================================
+    # 1. 파일 형식 확인
+    # ==========================================
+
+    filename = (
         file.filename
+        or ""
+    )
+
+    extension = os.path.splitext(
+        filename
     )[1].lower()
 
-    allowed = {
+    allowed_extensions = {
         ".wav",
-        ".mp3",
-        ".m4a",
-        ".webm",
-        ".ogg",
-        ".flac",
     }
 
-    if extension not in allowed:
-
+    if extension not in allowed_extensions:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Unsupported audio format."
+                "현재는 WAV 파일만 지원합니다."
             ),
         )
 
-    filename = (
-        f"{uuid.uuid4()}{extension}"
-    )
+    # ==========================================
+    # 2. 임시 WAV 파일 생성
+    # ==========================================
 
-    file_path = os.path.join(
-        AUDIO_DIR,
-        filename,
-    )
+    temp_path = None
 
     try:
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".wav",
+        ) as temp_file:
 
-        with open(
-            file_path,
-            "wb",
-        ) as buffer:
+            temp_path = (
+                temp_file.name
+            )
 
             shutil.copyfileobj(
                 file.file,
-                buffer,
+                temp_file,
             )
 
-        # =================================
-        # 1. SenseVoice
-        # =================================
+        # ==========================================
+        # 3. 전체 분석 실행
+        # ==========================================
 
-        raw_result = (
-            sensevoice_service.analyze(
-                file_path
-            )
+        service = (
+            get_presentation_service()
         )
 
-        sentence_info = (
-            raw_result.get(
-                "sentence_info",
-                [],
-            )
+        result = service.analyze(
+            temp_path
         )
 
-        segments = (
-            _convert_segments(
-                sentence_info
-            )
+        # ==========================================
+        # 4. 프론트용 결과 정리
+        # ==========================================
+
+        speech = result.get(
+            "speech",
+            {},
         )
 
-        transcript = (
-            raw_result.get(
-                "text",
-                "",
-            )
+        risk = result.get(
+            "risk",
+            {},
         )
 
-        # =================================
-        # 2. 추임새
-        # =================================
+        response = {
+            "transcript": (
+                result.get(
+                    "transcript",
+                    "",
+                )
+            ),
 
-        filler_result = (
-            filler_analyzer.analyze(
-                segments
-            )
-        )
+            "duration": (
+                result.get(
+                    "duration",
+                    0,
+                )
+            ),
 
-        # =================================
-        # 3. 발화
-        # =================================
+            "speech": {
+                "word_count": (
+                    speech.get(
+                        "word_count",
+                        0,
+                    )
+                ),
 
-        speech_result = (
-            speech_analyzer.analyze(
-                segments
-            )
-        )
+                "presentation_duration": (
+                    speech.get(
+                        "presentation_duration",
+                        0,
+                    )
+                ),
 
-        # =================================
-        # 4. 위험도
-        # =================================
+                "speech_time": (
+                    speech.get(
+                        "speech_time",
+                        0,
+                    )
+                ),
 
-        risk_result = (
-            risk_analyzer.analyze(
-                segments,
-                filler_result[
-                    "occurrences"
-                ],
-            )
-        )
+                "presentation_rate": (
+                    speech.get(
+                        "presentation_rate",
+                        0,
+                    )
+                ),
 
-        # =================================
-        # 5. 최종 응답
-        # =================================
+                "articulation_rate": (
+                    speech.get(
+                        "articulation_rate",
+                        0,
+                    )
+                ),
 
-        return {
-            "transcript": transcript,
+                "pace_level": (
+                    speech.get(
+                        "pace_level",
+                        "unknown",
+                    )
+                ),
 
-            "duration": speech_result[
-                "duration"
-            ],
+                "internal_pause_time": (
+                    speech.get(
+                        "internal_pause_time",
+                        0,
+                    )
+                ),
 
-            "filler": filler_result,
+                "internal_pause_ratio": (
+                    speech.get(
+                        "internal_pause_ratio",
+                        0,
+                    )
+                ),
 
-            "speech": speech_result,
+                "internal_pauses": (
+                    speech.get(
+                        "internal_pauses",
+                        [],
+                    )
+                ),
+            },
 
-            "risk": risk_result,
+            "fillers": (
+                result.get(
+                    "fillers",
+                    [],
+                )
+            ),
 
-            "segments": segments,
+            "risk": {
+                "overall_score": (
+                    risk.get(
+                        "overall_score",
+                        0,
+                    )
+                ),
+
+                "overall_level": (
+                    risk.get(
+                        "overall_level",
+                        "low",
+                    )
+                ),
+
+                "heatmap": (
+                    risk.get(
+                        "heatmap",
+                        [],
+                    )
+                ),
+            },
+
+            "coaching": (
+                result.get(
+                    "coaching",
+                    {},
+                )
+            ),
         }
 
+        return response
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"분석 중 오류가 발생했습니다: {str(e)}"
+            ),
+        )
+
     finally:
+        # ==========================================
+        # 5. 임시 파일 삭제
+        # ==========================================
 
-        if os.path.exists(
-            file_path
-        ):
+        try:
+            await file.close()
+        except Exception:
+            pass
 
-            os.remove(file_path)
-
-
-def _convert_segments(
-    sentence_info,
-):
-
-    segments = []
-
-    for item in sentence_info:
-
-        text = (
-            item.get("text")
-            or item.get("sentence")
-            or ""
-        )
-
-        emotion = None
-        event = None
-
-        # SenseVoice raw tag 처리
-        if "<|" in text:
-
-            tags = []
-
-            parts = text.split("<|")
-
-            for part in parts[1:]:
-
-                if "|>" in part:
-
-                    tag = (
-                        part.split("|>")[0]
-                    )
-
-                    tags.append(tag)
-
-            emotion_candidates = {
-                "HAPPY",
-                "SAD",
-                "ANGRY",
-                "NEUTRAL",
-                "FEAR",
-                "SURPRISED",
-            }
-
-            event_candidates = {
-                "Speech",
-                "Applause",
-                "Laughter",
-                "BGM",
-                "Cry",
-                "Sneeze",
-                "Breath",
-                "Cough",
-            }
-
-            for tag in tags:
-
-                if tag in emotion_candidates:
-                    emotion = tag
-
-                if tag in event_candidates:
-                    event = tag
-
-        clean_text = text
-
-        for tag in [
-            "NEUTRAL",
-            "HAPPY",
-            "SAD",
-            "ANGRY",
-            "FEAR",
-            "SURPRISED",
-            "Speech",
-            "Applause",
-            "Laughter",
-            "BGM",
-            "Cry",
-            "Sneeze",
-            "Breath",
-            "Cough",
-        ]:
-
-            clean_text = clean_text.replace(
-                f"<|{tag}|>",
-                "",
+        if (
+            temp_path
+            and os.path.exists(
+                temp_path
             )
-
-        segments.append(
-            {
-                "start": (
-                    item.get(
-                        "start",
-                        0,
-                    )
-                    / 1000
-                ),
-
-                "end": (
-                    item.get(
-                        "end",
-                        0,
-                    )
-                    / 1000
-                ),
-
-                "speaker": (
-                    f"speaker_{item['spk']}"
-                    if "spk" in item
-                    else None
-                ),
-
-                "text": clean_text.strip(),
-
-                "emotion": emotion,
-
-                "event": event,
-            }
-        )
-
-    return segments
+        ):
+            try:
+                os.remove(
+                    temp_path
+                )
+            except OSError:
+                pass
