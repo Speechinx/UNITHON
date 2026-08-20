@@ -21,14 +21,14 @@ print(
 )
 
 
-# ==========================================
-# 전체 분석
-# ==========================================
-
 result = service.analyze(
     audio_path
 )
 
+
+# ==========================================
+# Basic
+# ==========================================
 
 print(
     "\n===== BASIC RESULT ====="
@@ -39,17 +39,23 @@ print(
 )
 
 print(
-    result["transcript"]
+    result[
+        "transcript"
+    ]
 )
 
 print(
     "\nEmotion:",
-    result["emotion"]
+    result[
+        "emotion"
+    ]
 )
 
 print(
     "Duration:",
-    result["duration"],
+    result[
+        "duration"
+    ],
     "초"
 )
 
@@ -58,7 +64,9 @@ print(
 # Speech
 # ==========================================
 
-speech = result["speech"]
+speech = result[
+    "speech"
+]
 
 print(
     "\n===== SPEECH ====="
@@ -66,7 +74,9 @@ print(
 
 print(
     "어절 수:",
-    speech["word_count"]
+    speech[
+        "word_count"
+    ]
 )
 
 print(
@@ -79,7 +89,9 @@ print(
 
 print(
     "실제 발화 시간:",
-    speech["speech_time"],
+    speech[
+        "speech_time"
+    ],
     "초"
 )
 
@@ -99,21 +111,40 @@ print(
 )
 
 print(
-    "말하기 속도:",
-    speech["speech_rate"],
+    "발표 체감 속도:",
+    speech[
+        "presentation_rate"
+    ],
     "어절/분"
+)
+
+print(
+    "실제 발화 속도:",
+    speech[
+        "articulation_rate"
+    ],
+    "어절/분"
+)
+
+print(
+    "속도 판정:",
+    speech[
+        "pace_level"
+    ]
 )
 
 
 # ==========================================
-# Filler / Repetition
+# Fillers
 # ==========================================
 
 print(
     "\n===== FILLERS ====="
 )
 
-fillers = result["fillers"]
+fillers = result[
+    "fillers"
+]
 
 if not fillers:
 
@@ -140,7 +171,9 @@ else:
 # Risk
 # ==========================================
 
-risk = result["risk"]
+risk = result[
+    "risk"
+]
 
 print(
     "\n===== RISK ====="
@@ -148,12 +181,16 @@ print(
 
 print(
     "전체 위험 점수:",
-    risk["overall_score"]
+    risk[
+        "overall_score"
+    ]
 )
 
 print(
     "전체 위험 수준:",
-    risk["overall_level"]
+    risk[
+        "overall_level"
+    ]
 )
 
 
@@ -165,7 +202,9 @@ print(
     "\n===== HEATMAP ====="
 )
 
-for window in risk["heatmap"]:
+for window in risk[
+    "heatmap"
+]:
 
     print(
         "\n----------------------------"
@@ -179,29 +218,61 @@ for window in risk["heatmap"]:
 
     print(
         "어절:",
-        window["word_count"]
+        window[
+            "word_count"
+        ]
     )
 
     print(
-        "발화 시간:",
-        window["speech_time"]
+        "발표 시간:",
+        window[
+            "presentation_time"
+        ]
     )
 
     print(
-        "말하기 속도:",
-        window["speech_rate"],
+        "실제 발화 시간:",
+        window[
+            "speech_time"
+        ]
+    )
+
+    print(
+        "체감 속도:",
+        window[
+            "presentation_rate"
+        ],
         "어절/분"
     )
 
     print(
+        "실제 발화 속도:",
+        window[
+            "articulation_rate"
+        ],
+        "어절/분"
+    )
+
+    print(
+        "속도 판정:",
+        window[
+            "pace_level"
+        ]
+    )
+
+    print(
         "Pause:",
-        window["pause_count"],
+        window[
+            "pause_count"
+        ],
         "회"
     )
 
     print(
         "추임새:",
-        window["filler_count"],
+        window[
+            "filler_count"
+        ],
         "회"
     )
 
@@ -215,12 +286,18 @@ for window in risk["heatmap"]:
 
     print(
         "Risk:",
-        window["score"],
+        window[
+            "score"
+        ],
         "/",
-        window["level"]
+        window[
+            "level"
+        ]
     )
 
-    if window["reasons"]:
+    if window[
+        "reasons"
+    ]:
 
         print(
             "이유:"

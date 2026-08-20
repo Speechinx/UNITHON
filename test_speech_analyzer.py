@@ -14,13 +14,13 @@ print("Loading SenseVoice...")
 
 sensevoice = SenseVoiceService()
 
-print("SenseVoice loaded successfully!")
+print("SenseVoice loaded!")
 
 print("Starting audio analysis...")
 
 
 # ==========================================
-# SenseVoice 분석
+# SenseVoice
 # ==========================================
 
 sensevoice_result = (
@@ -30,25 +30,26 @@ sensevoice_result = (
 )
 
 
-print("\n===== SENSEVOICE RESULT =====")
+print(
+    "\n===== SENSEVOICE RESULT ====="
+)
 
 print("Transcript:")
+
 print(
-    sensevoice_result[
-        "transcript"
-    ]
+    sensevoice_result["transcript"]
 )
 
 print("\nDuration:")
+
 print(
-    sensevoice_result[
-        "duration"
-    ]
+    sensevoice_result["duration"],
+    "초"
 )
 
 
 # ==========================================
-# SpeechAnalyzer 분석
+# SpeechAnalyzer
 # ==========================================
 
 speech_analyzer = SpeechAnalyzer()
@@ -63,92 +64,110 @@ speech_result = (
 )
 
 
-print("\n===== SPEECH ANALYSIS =====")
-
-print("어절 수:")
 print(
-    speech_result[
-        "word_count"
-    ]
+    "\n===== SPEECH ANALYSIS ====="
 )
 
-print("전체 녹음 길이:")
 print(
-    speech_result[
-        "duration"
-    ],
+    "어절 수:",
+    speech_result["word_count"]
+)
+
+print(
+    "전체 녹음 길이:",
+    speech_result["duration"],
     "초"
 )
 
-print("실제 발표 구간:")
 print(
+    "실제 발표 구간:",
     speech_result[
         "presentation_duration"
     ],
     "초"
 )
 
-print("시작 전 무음:")
 print(
-    speech_result[
-        "leading_silence"
-    ],
-    "초"
-)
-
-print("종료 후 무음:")
-print(
-    speech_result[
-        "trailing_silence"
-    ],
-    "초"
-)
-
-print("실제 발화 시간:")
-print(
+    "실제 발화 시간:",
     speech_result[
         "speech_time"
     ],
     "초"
 )
 
-print("발표 중 Pause 시간:")
 print(
+    "시작 전 무음:",
+    speech_result[
+        "leading_silence"
+    ],
+    "초"
+)
+
+print(
+    "종료 후 무음:",
+    speech_result[
+        "trailing_silence"
+    ],
+    "초"
+)
+
+print(
+    "발표 중 Pause 시간:",
     speech_result[
         "internal_pause_time"
     ],
     "초"
 )
 
-print("발표 중 Pause 비율:")
 print(
+    "발표 중 Pause 비율:",
     speech_result[
         "internal_pause_ratio"
     ]
 )
 
-print("말하기 속도:")
 print(
+    "발표 체감 속도:",
     speech_result[
-        "speech_rate"
+        "presentation_rate"
     ],
     "어절/분"
 )
 
+print(
+    "실제 발화 속도:",
+    speech_result[
+        "articulation_rate"
+    ],
+    "어절/분"
+)
 
-print("\n===== INTERNAL PAUSES =====")
+print(
+    "속도 판정:",
+    speech_result[
+        "pace_level"
+    ]
+)
+
+
+print(
+    "\n===== INTERNAL PAUSES ====="
+)
 
 if not speech_result[
     "internal_pauses"
 ]:
+
     print(
         "탐지된 내부 pause 없음"
     )
 
 else:
+
     for pause in speech_result[
         "internal_pauses"
     ]:
+
         print(
             f"{pause['start']:.2f}s"
             f" ~ "
