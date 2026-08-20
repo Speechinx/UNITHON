@@ -85,7 +85,6 @@ class RiskAnalyzer:
         # 마지막 window가 너무 짧으면
         # 이전 window와 병합
         if len(windows) >= 2:
-
             last = windows[-1]
 
             last_duration = (
@@ -161,28 +160,34 @@ class RiskAnalyzer:
         )
 
         # ======================================
-        # 3. 시작/종료 무음 고려
+        # 3. 시작 / 끝 무음 제거
         # ======================================
 
-        non_speech_edge_time = 0.0
+        edge_silence_time = 0.0
 
-        leading_silence = speech_result.get(
-            "leading_silence",
-            0,
+        leading_silence = (
+            speech_result.get(
+                "leading_silence",
+                0,
+            )
         )
 
-        trailing_silence = speech_result.get(
-            "trailing_silence",
-            0,
+        trailing_silence = (
+            speech_result.get(
+                "trailing_silence",
+                0,
+            )
         )
 
-        total_duration = speech_result.get(
-            "duration",
-            end,
+        total_duration = (
+            speech_result.get(
+                "duration",
+                end,
+            )
         )
 
-        if start <= 0:
-            non_speech_edge_time += (
+        if leading_silence > 0:
+            edge_silence_time += (
                 self._get_overlap_duration(
                     0,
                     leading_silence,
@@ -197,7 +202,7 @@ class RiskAnalyzer:
                 - trailing_silence
             )
 
-            non_speech_edge_time += (
+            edge_silence_time += (
                 self._get_overlap_duration(
                     trailing_start,
                     total_duration,
@@ -207,21 +212,47 @@ class RiskAnalyzer:
             )
 
         # ======================================
-        # 4. 실제 발화 시간
+        # 4. 구간의 실제 발표 시간
+        #
+        # 시작/끝 무음만 제외
+        # 내부 pause는 포함한다.
+        #
+        # 즉 청중이 체감하는 템포
         # ======================================
 
-        speech_time = max(
+        presentation_time = max(
             window_duration
-            - pause_time
-            - non_speech_edge_time,
+            - edge_silence_time,
             0,
         )
 
         # ======================================
-        # 5. 구간별 말하기 속도
+        # 5. 실제 음성을 낸 시간
         # ======================================
 
-        speech_rate = (
+        speech_time = max(
+            presentation_time
+            - pause_time,
+            0,
+        )
+
+        # ======================================
+        # 6. 구간별 체감 발표 속도
+        # ======================================
+
+        presentation_rate = (
+            word_count
+            / presentation_time
+            * 60
+            if presentation_time > 0
+            else 0
+        )
+
+        # ======================================
+        # 7. 구간별 실제 발화 속도
+        # ======================================
+
+        articulation_rate = (
             word_count
             / speech_time
             * 60
@@ -229,8 +260,12 @@ class RiskAnalyzer:
             else 0
         )
 
+        pace_level = self._get_pace_level(
+            presentation_rate
+        )
+
         # ======================================
-        # 6. Pause 위험도
+        # 8. Pause 위험도
         # ======================================
 
         pause_count = len(pauses)
@@ -277,7 +312,7 @@ class RiskAnalyzer:
             )
 
         # ======================================
-        # 7. 추임새 / 반복
+        # 9. 추임새 / 반복
         # ======================================
 
         window_occurrences = []
@@ -348,34 +383,32 @@ class RiskAnalyzer:
             )
 
         # ======================================
-        # 8. 구간별 말하기 속도 위험도
+        # 10. 구간별 발표 속도 위험도
         # ======================================
 
-        # 어절이 너무 적은 구간은
-        # 속도 판정을 하지 않음
         if (
             word_count >= 3
-            and speech_time >= 2.0
+            and presentation_time >= 2.0
         ):
 
-            if speech_rate < 70:
+            if pace_level == "slow":
                 score += 15
 
                 reasons.append(
-                    f"말하기 속도가 느림 "
-                    f"({speech_rate:.1f} 어절/분)"
+                    f"발표 속도가 느림 "
+                    f"({presentation_rate:.1f} 어절/분)"
                 )
 
-            elif speech_rate > 180:
+            elif pace_level == "fast":
                 score += 15
 
                 reasons.append(
-                    f"말하기 속도가 빠름 "
-                    f"({speech_rate:.1f} 어절/분)"
+                    f"발표 속도가 빠름 "
+                    f"({presentation_rate:.1f} 어절/분)"
                 )
 
         # ======================================
-        # 9. 점수 제한
+        # 11. 점수 제한
         # ======================================
 
         score = min(
@@ -405,15 +438,27 @@ class RiskAnalyzer:
 
             "word_count": word_count,
 
+            "presentation_time": round(
+                presentation_time,
+                2,
+            ),
+
             "speech_time": round(
                 speech_time,
                 2,
             ),
 
-            "speech_rate": round(
-                speech_rate,
+            "presentation_rate": round(
+                presentation_rate,
                 2,
             ),
+
+            "articulation_rate": round(
+                articulation_rate,
+                2,
+            ),
+
+            "pace_level": pace_level,
 
             "pause_time": round(
                 pause_time,
@@ -444,7 +489,7 @@ class RiskAnalyzer:
         }
 
     # ==========================================
-    # Window 안 어절 찾기
+    # Window 안 어절
     # ==========================================
 
     def _get_words_in_window(
@@ -457,7 +502,6 @@ class RiskAnalyzer:
         result = []
 
         for segment in segments:
-
             normalized_words = (
                 segment.get(
                     "normalized_words",
@@ -466,7 +510,6 @@ class RiskAnalyzer:
             )
 
             for word in normalized_words:
-
                 word_start = word.get(
                     "start"
                 )
@@ -481,8 +524,6 @@ class RiskAnalyzer:
                 ):
                     continue
 
-                # 어절 시작 시간을 기준으로
-                # window에 배정
                 if (
                     start
                     <= word_start
@@ -495,7 +536,7 @@ class RiskAnalyzer:
         return result
 
     # ==========================================
-    # Window 안 pause 찾기
+    # Window 안 pause
     # ==========================================
 
     def _get_pauses_in_window(
@@ -508,7 +549,6 @@ class RiskAnalyzer:
         result = []
 
         for pause in pauses:
-
             pause_start = pause.get(
                 "start",
                 0,
@@ -530,7 +570,7 @@ class RiskAnalyzer:
         return result
 
     # ==========================================
-    # 두 시간 구간이 겹치는 길이
+    # 겹치는 시간
     # ==========================================
 
     def _get_overlap_duration(
@@ -558,7 +598,7 @@ class RiskAnalyzer:
         )
 
     # ==========================================
-    # 전체 점수
+    # 전체 위험 점수
     # ==========================================
 
     def _calculate_overall_score(
@@ -573,7 +613,6 @@ class RiskAnalyzer:
         total_duration = 0.0
 
         for window in heatmap:
-
             duration = window.get(
                 "duration",
                 0,
@@ -593,6 +632,26 @@ class RiskAnalyzer:
             weighted_score
             / total_duration
         )
+
+    # ==========================================
+    # 발표 속도 수준
+    # ==========================================
+
+    def _get_pace_level(
+        self,
+        presentation_rate: float,
+    ) -> str:
+
+        if presentation_rate <= 0:
+            return "unknown"
+
+        if presentation_rate < 70:
+            return "slow"
+
+        if presentation_rate > 160:
+            return "fast"
+
+        return "normal"
 
     # ==========================================
     # 위험 수준
