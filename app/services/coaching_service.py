@@ -327,13 +327,19 @@ class CoachingService:
    반드시 pace_level을 따른다.
 
    pace_level = slow
-   → 발표 속도가 느린 편이라고 설명한다.
-
+   → 발표 속도가 "느림"이라고 판단한다.
+   
+   pace_level = slightly_slow
+   → 발표 속도가 "약간 느림"이라고 판단한다.
+   
    pace_level = normal
-   → 발표 속도가 정상 범위라고 설명한다.
-
+   → 발표 속도가 "적절"하다고 판단한다.
+   
+   pace_level = slightly_fast
+   → 발표 속도가 "약간 빠름"이라고 판단한다.
+   
    pace_level = fast
-   → 발표 속도가 빠른 편이라고 설명한다.
+   → 발표 속도가 "빠름"이라고 판단한다.
 
 8. presentation_rate나 articulation_rate 숫자를 보고
    pace_level 판정을 임의로 변경하지 마라.

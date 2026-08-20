@@ -390,12 +390,27 @@ class RiskAnalyzer:
             word_count >= 3
             and presentation_time >= 2.0
         ):
-
             if pace_level == "slow":
                 score += 15
 
                 reasons.append(
                     f"발표 속도가 느림 "
+                    f"({presentation_rate:.1f} 어절/분)"
+                )
+
+            elif pace_level == "slightly_slow":
+                score += 7
+
+                reasons.append(
+                    f"발표 속도가 약간 느림 "
+                    f"({presentation_rate:.1f} 어절/분)"
+                )
+
+            elif pace_level == "slightly_fast":
+                score += 7
+
+                reasons.append(
+                    f"발표 속도가 약간 빠름 "
                     f"({presentation_rate:.1f} 어절/분)"
                 )
 
@@ -639,19 +654,25 @@ class RiskAnalyzer:
 
     def _get_pace_level(
         self,
-        presentation_rate: float,
+        rate: float,
     ) -> str:
 
-        if presentation_rate <= 0:
+        if rate <= 0:
             return "unknown"
 
-        if presentation_rate < 70:
+        if rate < 70:
             return "slow"
 
-        if presentation_rate > 160:
-            return "fast"
+        if rate < 90:
+            return "slightly_slow"
 
-        return "normal"
+        if rate < 130:
+            return "normal"
+
+        if rate < 160:
+            return "slightly_fast"
+
+        return "fast"
 
     # ==========================================
     # 위험 수준

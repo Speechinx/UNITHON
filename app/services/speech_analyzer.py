@@ -165,22 +165,22 @@ class SpeechAnalyzer:
 
     def _get_pace_level(
         self,
-        presentation_rate: float,
+        rate: float,
     ) -> str:
-        """
-        발표 전체 체감 속도를 기준으로 분류한다.
 
-        현재 값은 MVP용 기준이며,
-        향후 실제 발표 데이터로 튜닝한다.
-        """
-
-        if presentation_rate <= 0:
+        if rate <= 0:
             return "unknown"
 
-        if presentation_rate < 70:
+        if rate < 70:
             return "slow"
 
-        if presentation_rate > 160:
-            return "fast"
+        if rate < 90:
+            return "slightly_slow"
 
-        return "normal"
+        if rate < 130:
+            return "normal"
+
+        if rate < 160:
+            return "slightly_fast"
+
+        return "fast"
