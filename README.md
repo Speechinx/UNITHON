@@ -1,66 +1,117 @@
-# Presentation Helper AI
+# AI Presentation Coach
 
-> AI 기반 발표 분석 및 발표 코칭 서비스
+발표 음성을 분석해  
+**발표 속도, 멈춤, 추임새, 반복 표현, 구간별 발표 흐름**을 분석하고  
+AI 기반 코칭을 제공하는 발표 연습 서비스입니다.
 
-발표자의 음성을 분석하여  
-말하기 속도, 침묵, 추임새, 반복 표현 등을 분석하고  
-발표 중 개선이 필요한 구간을 시각화하는 AI Presentation Helper입니다.
-
----
-
-##  Project Overview
-
-발표 연습을 녹음한 음성 파일을 업로드하면  
-SenseVoice 모델을 이용하여 발표 내용을 분석합니다.
-
-### 주요 분석 항목
-
-- 🎙️ Speech-to-Text
-- ⏱️ 발화 구간 및 타임스탬프
-- 👤 화자 분석
-- 🗣️ 말하기 속도(WPM)
-- 🤫 침묵 분석
-- 🧩 추임새 분석
-- 🔁 반복 단어 분석
-- 🔥 발표 위험 구간 분석
-- 📊 시간대별 위험도 Heatmap
-- 😊 감정 분석
-- 🔊 음향 이벤트 분석
+단순히 발표 전체를 하나의 점수로 평가하는 것이 아니라,
+**10초 단위 구간 분석**을 통해 사용자가 어느 구간에서 발표 흐름을 놓쳤는지
+구체적으로 확인할 수 있도록 설계했습니다.
 
 ---
 
-# 🏗️ Architecture
+## 주요 기능
+
+### 1. 발표 음성 STT 변환
+- SenseVoiceSmall 기반 발표 음성 → 텍스트 변환
+- 한국어 발표 및 영어 표현 혼용 대응
+- 발화 구간별 timestamp 추출
+
+### 2. 발표 속도 분석
+- 전체 발표 속도 계산
+- 실제 발화 시간 기반 articulation rate 계산
+- 5단계 속도 판정
+  - 느림
+  - 약간 느림
+  - 적절
+  - 약간 빠름
+  - 빠름
+
+### 3. 멈춤 분석
+- WAV 음원의 RMS 값을 활용한 무음 구간 탐지
+- 발표 앞/뒤 무음과 내부 멈춤 구분
+- 내부 멈춤 시간 및 멈춤 비율 계산
+- 긴 멈춤 구간 탐지
+
+### 4. 추임새 및 반복 표현 분석
+- Kiwi 형태소 분석 기반
+- `음`, `그러니까` 등의 추임새 탐지
+- 반복 표현 탐지
+- 탐지된 표현의 발생 시간 기록
+
+### 5. 구간별 발표 흐름 분석
+발표를 약 10초 단위로 나누어 각 구간의 상태를 분석합니다.
+
+각 구간에서 다음 정보를 제공합니다.
+
+- 발표 속도
+- 멈춤 횟수
+- 긴 멈춤
+- 추임새
+- 반복 표현
+- 위험도 점수
+- 음성 톤 참고 신호
+
+구간별 위험도는 다음과 같이 표시됩니다.
+
+- 안정
+- 보통
+- 주의
+
+### 6. AI 발표 코칭
+Gemini를 활용해 분석된 정량 데이터를 기반으로 코칭을 생성합니다.
+
+- AI 종합 평가
+- 잘한 점
+- 개선할 점
+- 다음 연습 목표
+- 한 줄 코칭
+
+AI가 임의로 발표 내용을 평가하지 않도록
+**실제 분석 데이터에 존재하는 정보만 사용하도록 프롬프트를 제한**했습니다.
+
+### 7. 객관적인 강점 탐지
+AI가 임의로 칭찬을 생성하지 않도록 별도의 `StrengthAnalyzer`를 사용합니다.
+
+예시:
+
+- 전체 발표 속도가 적절한 경우
+- 반복 표현이 없는 경우
+- 추임새가 없는 경우
+- 일정 시간 이상 안정적인 발표 흐름을 유지한 경우
+
+이 데이터를 Gemini에 전달해 객관적인 근거가 있는 강점만 생성합니다.
+
+---
+
+# System Architecture
 
 ```text
-                    🎙️ Audio (mp4 etc..)
-                       │
-                       ▼
-              ┌─────────────────┐
-              │   SenseVoice    │
-              │                 │
-              │      STT        │
-              │    Emotion      │
-              │  Audio Event    │
-              └────────┬────────┘
-                       │
-             ┌─────────┼─────────┐
-             ▼         ▼         ▼
-           FSMN-VAD   CAM++    Transcript
-             │         │         │
-             │         │         ▼
-             │         │    Filler Analyzer
-             │         │         │
-             │         │         ├─ Known Fillers
-             │         │         └─ Repetition
-             │         │
-             └─────────┼──────────────┐
-                       │              │
-                       ▼              ▼
-                Speech Analyzer   Risk Analyzer
-                       │              │
-                       ├─ WPM         ├─ Risk Score
-                       ├─ Silence     └─ Heatmap
-                       └─ Speaking Time
-                              │
-                              ▼
-                       📊 Analysis Result
+WAV Audio
+   │
+   ▼
+SenseVoiceSmall
+   │
+   ├── STT
+   ├── Timestamp
+   └── Emotion Signal
+   │
+   ▼
+Analysis Pipeline
+   │
+   ├── TextNormalizer
+   ├── FillerAnalyzer
+   ├── AudioPauseAnalyzer
+   ├── SpeechAnalyzer
+   ├── RiskAnalyzer
+   ├── EmotionAnalyzer
+   └── StrengthAnalyzer
+   │
+   ▼
+Gemini Coaching
+   │
+   ▼
+FastAPI
+   │
+   ▼
+Flutter Web
