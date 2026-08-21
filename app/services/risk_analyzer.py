@@ -1,6 +1,6 @@
 class RiskAnalyzer:
-    WINDOW_SIZE = 10
-    MIN_LAST_WINDOW = 3.0
+    WINDOW_SIZE = 15
+    MIN_LAST_WINDOW = 5.0
 
     def analyze(
         self,

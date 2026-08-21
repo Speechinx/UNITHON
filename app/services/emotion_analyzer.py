@@ -4,12 +4,12 @@ import wave
 
 
 class EmotionAnalyzer:
-    WINDOW_SIZE = 10.0
+    WINDOW_SIZE = 15.0
 
-    MIN_LAST_WINDOW = 3.0
+    MIN_LAST_WINDOW = 5.0
 
     # 감정 분석 시 문맥 확보용
-    CONTEXT_PADDING = 1.5
+    CONTEXT_PADDING = 2
 
     def __init__(
         self,
