@@ -25,7 +25,7 @@ class SenseVoiceService:
         result = self.model.generate(
             input=audio_path,
             cache={},
-            language="ko",
+            language="auto",
             use_itn=True,
             batch_size_s=60,
             merge_vad=True,
