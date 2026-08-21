@@ -70,6 +70,8 @@ class RiskWindow(
 
     emotion_signal: str
 
+    transcript: str = ""
+
     score: int
     level: str
 

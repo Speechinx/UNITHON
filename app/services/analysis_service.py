@@ -52,6 +52,80 @@ class AnalysisService:
             )
         )
 
+    def _merge_transcript_into_heatmap(
+        self,
+        heatmap,
+        segments,
+    ):
+        for window in heatmap:
+            window_start = float(
+                window.get("start", 0)
+            )
+            window_end = float(
+                window.get("end", 0)
+            )
+
+            words = []
+
+            for segment in segments:
+                normalized_words = (
+                    segment.get(
+                        "normalized_words",
+                        [],
+                    )
+                    or []
+                )
+
+                for item in normalized_words:
+                    if not isinstance(
+                        item,
+                        dict,
+                    ):
+                        continue
+
+                    word = (
+                        item.get("word")
+                        or item.get("text")
+                        or ""
+                    ).strip()
+
+                    if not word:
+                        continue
+
+                    word_start = float(
+                        item.get(
+                            "start",
+                            0,
+                        )
+                    )
+
+                    word_end = float(
+                        item.get(
+                            "end",
+                            word_start,
+                        )
+                    )
+
+                    # 단어의 중심 시간이
+                    # 현재 15초 구간 안에 있는지 확인
+                    word_center = (
+                        word_start
+                        + word_end
+                    ) / 2
+
+                    if (
+                        window_start
+                        <= word_center
+                        < window_end
+                    ):
+                        words.append(
+                            word
+                        )
+
+            window["transcript"] = (
+                " ".join(words).strip()
+            )
+
     def analyze(
         self,
         audio_path: str,
@@ -141,6 +215,16 @@ class AnalysisService:
         self._merge_emotion_into_heatmap(
             heatmap,
             emotion_windows,
+        )
+
+        # Heatmap에 transcript를 결합
+
+        self._merge_transcript_into_heatmap(
+            risk_result["heatmap"],
+            sensevoice_result.get(
+                "segments",
+                [],
+            ),
         )
 
         # ==========================================

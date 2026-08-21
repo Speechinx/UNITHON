@@ -288,7 +288,7 @@ class RiskAnalyzer:
             ) >= 1.5
         ]
 
-        if pause_count >= 3:
+        if pause_count >= 4:
             score += 15
 
             reasons.append(
