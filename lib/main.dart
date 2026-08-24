@@ -131,12 +131,6 @@ class _HomePageState extends State<HomePage> {
       recordingSeconds = 0;
     });
 
-    try {
-      await _startPostureCapture();
-    } catch (e) {
-      debugPrint('자세 캡처를 시작하지 못했습니다: $e');
-    }
-
     _recordingTimer?.cancel();
 
     _recordingTimer = Timer.periodic(
@@ -151,6 +145,12 @@ class _HomePageState extends State<HomePage> {
         });
       },
     );
+
+    try {
+      await _startPostureCapture();
+    } catch (e) {
+      debugPrint('자세 캡처를 시작하지 못했습니다: $e');
+    }
   } catch (e) {
     if (!mounted) {
       return;
