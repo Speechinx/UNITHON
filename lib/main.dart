@@ -266,9 +266,13 @@ Future<void> _startPostureCapture() async {
   }
 
 Future<void> stopRecording() async {
-  if (!isRecording) {
+  if (!isRecording || isLoading) {
     return;
   }
+
+  setState(() {
+    isLoading = true;
+  });
 
   try {
     _recordingTimer?.cancel();
@@ -332,6 +336,7 @@ Future<void> stopRecording() async {
 
     setState(() {
       isRecording = false;
+      isLoading = false;
 
       errorMessage = e
           .toString()
