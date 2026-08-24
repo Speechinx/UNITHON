@@ -15,4 +15,4 @@ numpy
 kiwipiepy
 
 google-genai
-python-dotenvclear
+python-dotenv
