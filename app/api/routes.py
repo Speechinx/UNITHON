@@ -7,6 +7,7 @@ from fastapi import (
     APIRouter,
     File,
     HTTPException,
+    Query,
     UploadFile,
 )
 
@@ -16,6 +17,18 @@ from app.schemas.analysis_response import (
 
 from app.services.presentation_analysis_service import (
     PresentationAnalysisService
+)
+
+from app.services.posture_frame_extractor import (
+    PostureFrameExtractor
+)
+
+from app.services.posture_analyzer import (
+    PostureAnalyzer
+)
+
+from app.services.posture_session_store import (
+    PostureSessionStore
 )
 
 
@@ -37,6 +50,20 @@ def get_presentation_service():
         )
 
     return presentation_service
+
+
+posture_extractor = None
+posture_analyzer = PostureAnalyzer()
+posture_store = PostureSessionStore()
+
+
+def get_posture_extractor():
+    global posture_extractor
+
+    if posture_extractor is None:
+        posture_extractor = PostureFrameExtractor()
+
+    return posture_extractor
 
 
 def validate_wav(
@@ -330,3 +357,38 @@ async def analyze_presentation(
                 )
             except OSError:
                 pass
+
+
+@router.post(
+    "/posture/window",
+)
+async def analyze_posture_window(
+    session_id: str = Query(...),
+    window_index: int = Query(...),
+    frames: list[UploadFile] = File(...),
+):
+
+    extractor = get_posture_extractor()
+
+    landmark_frames = []
+
+    for frame in frames:
+        content = await frame.read()
+
+        landmark_frames.append(
+            extractor.extract(content)
+        )
+
+    result = posture_analyzer.analyze_window(
+        landmark_frames
+    )
+
+    result["window_index"] = window_index
+
+    posture_store.add_window(
+        session_id,
+        window_index,
+        result,
+    )
+
+    return result
