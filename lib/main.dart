@@ -7,6 +7,8 @@ import 'package:record/record.dart';
 import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
 
+import 'posture_blob_cleanup_stub.dart'
+    if (dart.library.html) 'posture_blob_cleanup_web.dart';
 import 'posture_capture_buffer.dart';
 import 'posture_timeline.dart';
 import 'posture_window_uploader.dart';
@@ -214,6 +216,9 @@ Future<void> _startPostureCapture() async {
     try {
       final file = await controller.takePicture();
       final bytes = await file.readAsBytes();
+
+      revokePostureFrameBlobUrl(file.path);
+
       final resized = _resizeJpeg(bytes);
 
       _postureBuffer.addFrame(resized);
