@@ -91,6 +91,37 @@ class RiskResult(
     ]
 
 
+class PostureWindow(
+    BaseModel
+):
+    window_index: int
+
+    signal_sufficient: bool
+    valid_frame_ratio: float
+
+    shoulder_tilt_avg_deg: float = 0.0
+    shoulder_tilt_exceed_ratio: float = 0.0
+
+    head_down_avg_deg: float = 0.0
+    head_down_exceed_ratio: float = 0.0
+
+    sway_std: float = 0.0
+
+    gesture_activity_level: str = "unknown"
+
+    reasons: List[
+        str
+    ] = []
+
+
+class PostureResult(
+    BaseModel
+):
+    windows: List[
+        PostureWindow
+    ]
+
+
 class Improvement(
     BaseModel
 ):
@@ -133,5 +164,7 @@ class AnalysisResponse(
     ]
 
     risk: RiskResult
+
+    posture: PostureResult
 
     coaching: CoachingResult
