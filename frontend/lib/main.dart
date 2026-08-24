@@ -1537,6 +1537,16 @@ class _ResultPageState extends State<ResultPage> {
         .toList();
   }
 
+  PostureWindow? _postureWindowForIndex(int index) {
+    for (final window in _postureWindows) {
+      if (window.windowIndex == index) {
+        return window;
+      }
+    }
+
+    return null;
+  }
+
   @override
   Widget build(
     BuildContext context,
@@ -1889,53 +1899,6 @@ class _ResultPageState extends State<ResultPage> {
                           ),
                         ),
 
-                        const SizedBox(
-                          height: 16,
-                        ),
-
-                        // ==================================================
-                        // 자세 타임라인
-                        // ==================================================
-                        _SectionCard(
-                          title:
-                              '자세 타임라인',
-                          child:
-                              Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '녹화 중 촬영된 자세 신호를 구간별로 보여줍니다.',
-                                style:
-                                    TextStyle(
-                                  fontSize:
-                                      12,
-                                  color:
-                                      Colors.black54,
-                                  height:
-                                      1.4,
-                                ),
-                              ),
-
-                              const SizedBox(
-                                height: 16,
-                              ),
-
-                              if (
-                                  _postureWindows.isEmpty
-                              )
-                                const Text(
-                                  '자세 분석 결과가 없습니다.',
-                                )
-                              else
-                                PostureTimeline(
-                                  windows:
-                                      _postureWindows,
-                                ),
-                            ],
-                          ),
-                        ),
-
                         if (
                             selectedWindow !=
                             null
@@ -1950,6 +1913,12 @@ class _ResultPageState extends State<ResultPage> {
 
                           _WindowDetailCard(
                             window: selectedWindow,
+                            hasPostureData:
+                                _postureWindows.isNotEmpty,
+                            postureWindow:
+                                _postureWindowForIndex(
+                              selectedWindowIndex,
+                            ),
                             showTranscriptFull:
                                 showSelectedTranscriptFull,
                             onToggleTranscript: () {
@@ -2513,12 +2482,18 @@ class _WindowDetailCard
     extends StatelessWidget {
   final Map<String, dynamic> window;
 
+  final bool hasPostureData;
+
+  final PostureWindow? postureWindow;
+
   final bool showTranscriptFull;
 
   final VoidCallback onToggleTranscript;
 
   const _WindowDetailCard({
     required this.window,
+    required this.hasPostureData,
+    required this.postureWindow,
     required this.showTranscriptFull,
     required this.onToggleTranscript,
   });
@@ -2726,6 +2701,139 @@ class _WindowDetailCard
                 );
               },
             ),
+
+          // ==============================
+          // 자세 신호
+          // ==============================
+
+          if (hasPostureData) ...[
+            const SizedBox(
+              height: 18,
+            ),
+
+            const Divider(),
+
+            const SizedBox(
+              height: 10,
+            ),
+
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '자세 신호',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 10,
+            ),
+
+            if (postureWindow == null)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '이 구간은 자세 데이터가 없습니다.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                  ),
+                ),
+              )
+            else if (!postureWindow!.signalSufficient)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '자세 신호 부족',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                  ),
+                ),
+              )
+            else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _DetailItem(
+                      label: '어깨 기울기',
+                      value:
+                          '평균 ${postureWindow!.shoulderTiltAvgDeg.toStringAsFixed(1)}도 '
+                          '· 초과 ${(postureWindow!.shoulderTiltExceedRatio * 100).toStringAsFixed(0)}%',
+                    ),
+                  ),
+
+                  const SizedBox(
+                    width: 12,
+                  ),
+
+                  Expanded(
+                    child: _DetailItem(
+                      label: '고개 숙임',
+                      value:
+                          '평균 ${postureWindow!.headDownAvgDeg.toStringAsFixed(1)}도 '
+                          '· 초과 ${(postureWindow!.headDownExceedRatio * 100).toStringAsFixed(0)}%',
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(
+                height: 12,
+              ),
+
+              _DetailItem(
+                label: '제스처 활동성',
+                value: _gestureActivityText(
+                  postureWindow!.gestureActivityLevel,
+                ),
+              ),
+
+              if (postureWindow!.reasons.isNotEmpty) ...[
+                const SizedBox(
+                  height: 12,
+                ),
+
+                ...postureWindow!.reasons.map(
+                  (reason) {
+                    return Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: 7,
+                      ),
+                      child: Row(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '• ',
+                            style: TextStyle(
+                              fontSize: 13,
+                            ),
+                          ),
+
+                          Expanded(
+                            child: Text(
+                              _replaceBackendTerms(
+                                reason,
+                              ),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ],
 
           // ==============================
           // 해당 15초 구간 발표 내용
@@ -3189,6 +3297,24 @@ String _riskLabel(
 
     case 'low':
       return '안정';
+
+    default:
+      return '분석 없음';
+  }
+}
+
+String _gestureActivityText(
+  String level,
+) {
+  switch (level) {
+    case 'low':
+      return '낮음';
+
+    case 'normal':
+      return '보통';
+
+    case 'high':
+      return '높음';
 
     default:
       return '분석 없음';
