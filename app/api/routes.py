@@ -122,7 +122,8 @@ def validate_wav(
     response_model=AnalysisResponse,
 )
 async def analyze_presentation(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    session_id: str | None = Query(default=None),
 ):
 
     filename = (
@@ -196,8 +197,15 @@ async def analyze_presentation(
             get_presentation_service()
         )
 
+        posture_windows = (
+            posture_store.get_windows(session_id)
+            if session_id
+            else None
+        )
+
         result = service.analyze(
-            temp_path
+            temp_path,
+            posture_windows=posture_windows,
         )
 
         speech = result.get(
@@ -320,6 +328,13 @@ async def analyze_presentation(
                 ),
             },
 
+            "posture": (
+                result.get(
+                    "posture",
+                    {"windows": []},
+                )
+            ),
+
             "coaching": (
                 result.get(
                     "coaching",
@@ -357,6 +372,9 @@ async def analyze_presentation(
                 )
             except OSError:
                 pass
+
+        if session_id:
+            posture_store.clear(session_id)
 
 
 @router.post(

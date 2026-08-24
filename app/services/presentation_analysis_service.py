@@ -20,6 +20,7 @@ class PresentationAnalysisService:
     def analyze(
         self,
         audio_path: str,
+        posture_windows: list[dict] | None = None,
     ) -> dict:
 
         # ==========================================
@@ -31,6 +32,10 @@ class PresentationAnalysisService:
                 audio_path
             )
         )
+
+        analysis_result["posture"] = {
+            "windows": posture_windows or []
+        }
 
         # ==========================================
         # 2. Gemini 코칭 생성
@@ -94,6 +99,10 @@ class PresentationAnalysisService:
                     "risk",
                     {},
                 )
+            ),
+
+            "posture": (
+                analysis_result["posture"]
             ),
 
             "coaching": (
