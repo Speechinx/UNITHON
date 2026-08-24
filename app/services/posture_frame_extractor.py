@@ -61,6 +61,9 @@ class PostureFrameExtractor:
             for name, index in LANDMARK_INDICES.items()
         }
 
+    def close(self):
+        self._landmarker.close()
+
     def _decode(
         self,
         jpeg_bytes: bytes,
