@@ -255,7 +255,12 @@ Future<void> _startPostureCapture() async {
 
     await _flushPostureWindow();
 
-    await _cameraController?.dispose();
+    try {
+      await _cameraController?.dispose();
+    } catch (e) {
+      debugPrint('카메라 정리 실패: $e');
+    }
+
     _cameraController = null;
   }
 
