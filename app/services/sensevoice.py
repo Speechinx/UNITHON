@@ -16,7 +16,7 @@ class SenseVoiceService:
                 "max_single_segment_time": 30000
             },
             spk_model="cam++",
-            device="cuda:0",
+            device="cpu",
         )
 
         self.normalizer = TextNormalizer()

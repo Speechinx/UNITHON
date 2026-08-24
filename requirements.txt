@@ -11,3 +11,8 @@ funasr
 modelscope
 
 numpy
+
+kiwipiepy
+
+google-genai
+python-dotenvclear
