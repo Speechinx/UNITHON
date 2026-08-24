@@ -218,6 +218,9 @@ async def analyze_presentation(
             {},
         )
 
+        if session_id:
+            posture_store.clear(session_id)
+
         return {
             "transcript": (
                 result.get(
@@ -372,9 +375,6 @@ async def analyze_presentation(
                 )
             except OSError:
                 pass
-
-        if session_id:
-            posture_store.clear(session_id)
 
 
 @router.post(

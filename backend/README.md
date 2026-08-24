@@ -297,6 +297,53 @@ Gemini가 분석 결과에 없는 내용을 임의로 생성하지 않도록
 
 ---
 
+### 10. 자세 분석
+
+MediaPipe 기반의 Pose Landmarker 모델을 사용해  
+발표 중 촬영된 비디오 프레임에서 **발표자의 자세 신호를 15초 단위로 분석**합니다.
+
+전체 발표를 하나의 자세 평가로 단순하게 판정하지 않고,  
+약 15초 단위로 영상을 나누어 각 구간의 자세 신호를 확인합니다.
+
+분석되는 자세 신호:
+
+- `어깨 기울기` — 양쪽 어깨의 높이 차이
+- `고개 숙임` — 고개가 숙인 정도
+- `좌우 흔들림` — 신체의 좌우 흔들림
+- `손 제스처` — 손의 위치와 움직임
+- `신뢰도` — 각 신호의 감지 신뢰도
+
+신뢰도가 충분하지 않은 구간은  
+`자세 신호 부족`으로 표시해 불확실한 신호를 제외합니다.
+
+> 이 기능은 발표자의 자세가 좋거나 나쁜지를 판단하기 위한 것이 아니라,  
+> 비디오에서 감지된 자세 신호를 발표 피드백의 참고 정보로 활용합니다.
+
+---
+
+## 설치
+
+### 필수 패키지 설치
+
+```bash
+pip install -r requirements.txt
+```
+
+### 자세 분석 모델 다운로드
+
+자세 분석을 위해 MediaPipe의 Pose Landmarker 모델을 다운로드합니다.
+
+```bash
+mkdir -p models
+curl -L -o models/pose_landmarker_lite.task \
+  https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
+```
+
+모델은 `models/` 디렉토리에 저장되며,  
+처음 사용할 때 자동으로 로드됩니다.
+
+---
+
 ## 전체 분석 흐름
 
 ```text

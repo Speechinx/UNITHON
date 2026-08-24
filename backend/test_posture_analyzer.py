@@ -72,36 +72,76 @@ def test_shoulder_tilt_deg_for_45_degree_tilt():
     )
 
 
-def test_head_down_deg_is_zero_when_nose_directly_above_shoulders():
+def test_shoulder_tilt_deg_is_symmetric_when_shoulder_order_is_reversed():
     analyzer = PostureAnalyzer()
 
     frame = _frame(
-        nose=(0.5, 0.2),
+        left_shoulder=(0.6, 0.4),
+        right_shoulder=(0.4, 0.4),
+    )
+
+    assert analyzer._shoulder_tilt_deg(frame) == 0.0
+
+
+def test_shoulder_tilt_deg_for_45_degree_tilt_with_reversed_shoulder_order():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        left_shoulder=(0.6, 0.4),
+        right_shoulder=(0.4, 0.6),
+    )
+
+    assert math.isclose(
+        analyzer._shoulder_tilt_deg(frame),
+        45.0,
+        abs_tol=0.01,
+    )
+
+
+def test_head_down_deg_is_unaffected_by_horizontal_nose_position():
+    analyzer = PostureAnalyzer()
+
+    centered = _frame(
+        nose=(0.5, 0.3),
+        left_shoulder=(0.4, 0.5),
+        right_shoulder=(0.6, 0.5),
+    )
+
+    off_to_the_side = _frame(
+        nose=(0.7, 0.3),
         left_shoulder=(0.4, 0.5),
         right_shoulder=(0.6, 0.5),
     )
 
     assert math.isclose(
-        analyzer._head_down_deg(frame),
-        0.0,
+        analyzer._head_down_deg(centered),
+        analyzer._head_down_deg(off_to_the_side),
+        abs_tol=0.001,
+    )
+
+    assert math.isclose(
+        analyzer._head_down_deg(centered),
+        45.0,
         abs_tol=0.01,
     )
 
 
-def test_head_down_deg_is_90_when_nose_level_with_shoulders():
+def test_head_down_deg_increases_as_nose_approaches_shoulder_height():
     analyzer = PostureAnalyzer()
 
-    frame = _frame(
-        nose=(0.8, 0.5),
+    upright = _frame(
+        nose=(0.5, 0.1),
         left_shoulder=(0.4, 0.5),
         right_shoulder=(0.6, 0.5),
     )
 
-    assert math.isclose(
-        analyzer._head_down_deg(frame),
-        90.0,
-        abs_tol=0.01,
+    hunched = _frame(
+        nose=(0.5, 0.45),
+        left_shoulder=(0.4, 0.5),
+        right_shoulder=(0.6, 0.5),
     )
+
+    assert analyzer._head_down_deg(hunched) > analyzer._head_down_deg(upright)
 
 
 def test_analyze_window_signal_insufficient_when_too_many_invalid_frames():
