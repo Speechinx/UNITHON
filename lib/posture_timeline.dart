@@ -17,7 +17,7 @@ class PostureWindow {
 
   factory PostureWindow.fromJson(Map<String, dynamic> json) {
     return PostureWindow(
-      windowIndex: json['window_index'] as int,
+      windowIndex: json['window_index'] as int? ?? 0,
       signalSufficient: json['signal_sufficient'] as bool? ?? false,
       shoulderTiltExceedRatio:
           (json['shoulder_tilt_exceed_ratio'] as num?)?.toDouble() ?? 0.0,
@@ -48,7 +48,7 @@ class PostureTimeline extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: windows.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 4),
+        separatorBuilder: (_, _) => const SizedBox(width: 4),
         itemBuilder: (context, index) {
           return _PostureWindowChip(window: windows[index]);
         },

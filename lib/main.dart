@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'dart:async';
+import 'dart:math';
 import 'package:record/record.dart';
 import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
@@ -88,6 +89,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _postureCaptureTimer;
   Timer? _postureFlushTimer;
   Future<void>? _lastPostureFlush;
+  bool _isCapturingPostureFrame = false;
   int _postureWindowIndex = 0;
   String? _postureSessionId;
   PostureWindowUploader? _postureUploader;
@@ -166,7 +168,10 @@ class _HomePageState extends State<HomePage> {
 }
 
 Future<void> _startPostureCapture() async {
-    _postureSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    _postureBuffer.flush();
+
+    _postureSessionId =
+        '${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1000000)}';
     _postureWindowIndex = 0;
 
     _postureUploader = PostureWindowUploader(
@@ -207,11 +212,17 @@ Future<void> _startPostureCapture() async {
   }
 
   Future<void> _capturePostureFrame() async {
+    if (_isCapturingPostureFrame) {
+      return;
+    }
+
     final controller = _cameraController;
 
     if (controller == null || !controller.value.isInitialized) {
       return;
     }
+
+    _isCapturingPostureFrame = true;
 
     try {
       final file = await controller.takePicture();
@@ -224,6 +235,8 @@ Future<void> _startPostureCapture() async {
       _postureBuffer.addFrame(resized);
     } catch (e) {
       debugPrint('자세 프레임 캡처 실패: $e');
+    } finally {
+      _isCapturingPostureFrame = false;
     }
   }
 
