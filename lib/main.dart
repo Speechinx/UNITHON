@@ -3,7 +3,16 @@ import 'dart:convert';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'dart:async';
+import 'dart:math';
 import 'package:record/record.dart';
+import 'package:camera/camera.dart';
+import 'package:image/image.dart' as img;
+
+import 'posture_blob_cleanup_stub.dart'
+    if (dart.library.html) 'posture_blob_cleanup_web.dart';
+import 'posture_capture_buffer.dart';
+import 'posture_timeline.dart';
+import 'posture_window_uploader.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +84,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AudioRecorder _audioRecorder = AudioRecorder();
+  CameraController? _cameraController;
+  final PostureCaptureBuffer _postureBuffer = PostureCaptureBuffer();
+  Timer? _postureCaptureTimer;
+  Timer? _postureFlushTimer;
+  Future<void>? _lastPostureFlush;
+  bool _isCapturingPostureFrame = false;
+  int _postureWindowIndex = 0;
+  String? _postureSessionId;
+  PostureWindowUploader? _postureUploader;
 
   bool isRecording = false;
   int recordingSeconds = 0;
@@ -132,6 +150,12 @@ class _HomePageState extends State<HomePage> {
         });
       },
     );
+
+    try {
+      await _startPostureCapture();
+    } catch (e) {
+      debugPrint('자세 캡처를 시작하지 못했습니다: $e');
+    }
   } catch (e) {
     if (!mounted) {
       return;
@@ -143,13 +167,142 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+Future<void> _startPostureCapture() async {
+    _postureBuffer.flush();
+
+    _postureSessionId =
+        '${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1000000)}';
+    _postureWindowIndex = 0;
+
+    _postureUploader = PostureWindowUploader(
+      baseUrl: 'http://127.0.0.1:8000',
+      sessionId: _postureSessionId!,
+    );
+
+    final cameras = await availableCameras();
+
+    if (cameras.isEmpty) {
+      return;
+    }
+
+    final frontCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.front,
+      orElse: () => cameras.first,
+    );
+
+    _cameraController = CameraController(
+      frontCamera,
+      ResolutionPreset.low,
+      enableAudio: false,
+    );
+
+    await _cameraController!.initialize();
+
+    _postureCaptureTimer = Timer.periodic(
+      const Duration(milliseconds: 400),
+      (_) => _capturePostureFrame(),
+    );
+
+    _postureFlushTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) {
+        _lastPostureFlush = _flushPostureWindow();
+      },
+    );
+  }
+
+  Future<void> _capturePostureFrame() async {
+    if (_isCapturingPostureFrame) {
+      return;
+    }
+
+    final controller = _cameraController;
+
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    _isCapturingPostureFrame = true;
+
+    try {
+      final file = await controller.takePicture();
+      final bytes = await file.readAsBytes();
+
+      revokePostureFrameBlobUrl(file.path);
+
+      final resized = _resizeJpeg(bytes);
+
+      _postureBuffer.addFrame(resized);
+    } catch (e) {
+      debugPrint('자세 프레임 캡처 실패: $e');
+    } finally {
+      _isCapturingPostureFrame = false;
+    }
+  }
+
+  List<int> _resizeJpeg(Uint8List originalBytes) {
+    final decoded = img.decodeImage(originalBytes);
+
+    if (decoded == null) {
+      return originalBytes;
+    }
+
+    final resized = img.copyResize(decoded, width: 320, height: 240);
+
+    return img.encodeJpg(resized, quality: 70);
+  }
+
+  Future<void> _flushPostureWindow() async {
+    final frames = _postureBuffer.flush();
+    final windowIndex = _postureWindowIndex;
+    _postureWindowIndex += 1;
+
+    if (frames.isEmpty || _postureUploader == null) {
+      return;
+    }
+
+    try {
+      await _postureUploader!.uploadWindow(
+        windowIndex: windowIndex,
+        frames: frames,
+      );
+    } catch (e) {
+      debugPrint('자세 window 업로드 실패 (건너뜀): $e');
+    }
+  }
+
+  Future<void> _stopPostureCapture() async {
+    _postureCaptureTimer?.cancel();
+    _postureFlushTimer?.cancel();
+
+    if (_lastPostureFlush != null) {
+      await _lastPostureFlush;
+    }
+
+    await _flushPostureWindow();
+
+    try {
+      await _cameraController?.dispose();
+    } catch (e) {
+      debugPrint('카메라 정리 실패: $e');
+    }
+
+    _cameraController = null;
+  }
+
 Future<void> stopRecording() async {
-  if (!isRecording) {
+  if (!isRecording || isLoading) {
     return;
   }
 
+  setState(() {
+    isLoading = true;
+  });
+
   try {
     _recordingTimer?.cancel();
+
+    await _stopPostureCapture();
 
     final path = await _audioRecorder.stop();
 
@@ -199,6 +352,7 @@ Future<void> stopRecording() async {
     await analyzeWavBytes(
       bytes,
       filename: 'recorded_presentation.wav',
+      sessionId: _postureSessionId,
     );
   } catch (e) {
     if (!mounted) {
@@ -207,6 +361,7 @@ Future<void> stopRecording() async {
 
     setState(() {
       isRecording = false;
+      isLoading = false;
 
       errorMessage = e
           .toString()
@@ -237,6 +392,7 @@ String formatRecordingTime(
   Future<void> analyzeWavBytes(
     Uint8List bytes, {
     String filename = 'presentation.wav',
+    String? sessionId,
   }) async {
     setState(() {
       isLoading = true;
@@ -244,11 +400,17 @@ String formatRecordingTime(
     });
 
     try {
+      final analyzeUri = Uri.parse(
+        'http://127.0.0.1:8000/analyze',
+      ).replace(
+        queryParameters: sessionId == null
+            ? null
+            : {'session_id': sessionId},
+      );
+
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse(
-          'http://127.0.0.1:8000/analyze',
-        ),
+        analyzeUri,
       );
 
       request.files.add(
@@ -429,6 +591,10 @@ String formatRecordingTime(
   void dispose() {
     _recordingTimer?.cancel();
     _audioRecorder.dispose();
+
+    _postureCaptureTimer?.cancel();
+    _postureFlushTimer?.cancel();
+    _cameraController?.dispose();
 
     super.dispose();
   }
@@ -1350,6 +1516,27 @@ class _ResultPageState extends State<ResultPage> {
   bool showDetails = false;
   bool showSelectedTranscriptFull = false;
 
+  List<PostureWindow> get _postureWindows {
+    final posture =
+        widget.result['posture'];
+
+    if (posture is! Map<String, dynamic>) {
+      return [];
+    }
+
+    final windows =
+        posture['windows'];
+
+    if (windows is! List) {
+      return [];
+    }
+
+    return windows
+        .whereType<Map<String, dynamic>>()
+        .map(PostureWindow.fromJson)
+        .toList();
+  }
+
   @override
   Widget build(
     BuildContext context,
@@ -1697,6 +1884,53 @@ class _ResultPageState extends State<ResultPage> {
                                       showSelectedTranscriptFull = false;
                                     });
                                   },
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height: 16,
+                        ),
+
+                        // ==================================================
+                        // 자세 타임라인
+                        // ==================================================
+                        _SectionCard(
+                          title:
+                              '자세 타임라인',
+                          child:
+                              Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '녹화 중 촬영된 자세 신호를 구간별로 보여줍니다.',
+                                style:
+                                    TextStyle(
+                                  fontSize:
+                                      12,
+                                  color:
+                                      Colors.black54,
+                                  height:
+                                      1.4,
+                                ),
+                              ),
+
+                              const SizedBox(
+                                height: 16,
+                              ),
+
+                              if (
+                                  _postureWindows.isEmpty
+                              )
+                                const Text(
+                                  '자세 분석 결과가 없습니다.',
+                                )
+                              else
+                                PostureTimeline(
+                                  windows:
+                                      _postureWindows,
                                 ),
                             ],
                           ),
