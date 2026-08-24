@@ -177,6 +177,13 @@ class CoachingService:
                 )
             ),
 
+            "posture_signals": (
+                analysis_result.get(
+                    "posture",
+                    {},
+                )
+            ),
+
             "speech": {
                 "word_count": (
                     speech.get(
@@ -424,6 +431,28 @@ presentation_rate가 낮고 pace_level이 slow라면
 
 28. 특별한 이유가 없다면
     emotion_signal을 코칭에서 굳이 언급하지 않아도 된다.
+
+
+[자세]
+
+28-1. posture_signals는 카메라 프레임에서 측정한 신체 자세 신호
+    (어깨 기울기, 고개 숙임, 좌우 흔들림, 손 제스처 활동성)일 뿐이다.
+
+28-2. posture_signals의 신호로 발표자의 자신감, 긴장 정도,
+    실제 심리 상태를 단정하지 마라.
+
+28-3. 각 구간의 signal_sufficient가 false라면
+    해당 구간의 자세는 언급하지 마라.
+
+28-4. shoulder_tilt_exceed_ratio나 head_down_exceed_ratio가 낮으면
+    굳이 자세를 언급하지 않아도 된다.
+
+28-5. reasons에 기록된 구체적인 수치·구간을 근거로만
+    자세 피드백을 작성하라.
+
+28-6. gesture_activity_level은 좋고 나쁨을 판단하는 지표가 아니라
+    활동성 수준(낮음/보통/높음)일 뿐이다.
+    "low"라고 해서 무조건 개선이 필요하다고 말하지 마라.
 
 
 [잘한 점]
