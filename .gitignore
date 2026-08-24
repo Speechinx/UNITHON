@@ -18,6 +18,7 @@ audio/*
 
 .cache/
 models/
+models/*.task
 
 .pytest_cache/
 
