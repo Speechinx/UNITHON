@@ -85,6 +85,7 @@ class _HomePageState extends State<HomePage> {
   final PostureCaptureBuffer _postureBuffer = PostureCaptureBuffer();
   Timer? _postureCaptureTimer;
   Timer? _postureFlushTimer;
+  Future<void>? _lastPostureFlush;
   int _postureWindowIndex = 0;
   String? _postureSessionId;
   PostureWindowUploader? _postureUploader;
@@ -197,7 +198,9 @@ Future<void> _startPostureCapture() async {
 
     _postureFlushTimer = Timer.periodic(
       const Duration(seconds: 15),
-      (_) => _flushPostureWindow(),
+      (_) {
+        _lastPostureFlush = _flushPostureWindow();
+      },
     );
   }
 
@@ -253,6 +256,10 @@ Future<void> _startPostureCapture() async {
   Future<void> _stopPostureCapture() async {
     _postureCaptureTimer?.cancel();
     _postureFlushTimer?.cancel();
+
+    if (_lastPostureFlush != null) {
+      await _lastPostureFlush;
+    }
 
     await _flushPostureWindow();
 
