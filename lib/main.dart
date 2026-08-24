@@ -4,6 +4,11 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'dart:async';
 import 'package:record/record.dart';
+import 'package:camera/camera.dart';
+import 'package:image/image.dart' as img;
+
+import 'posture_capture_buffer.dart';
+import 'posture_window_uploader.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +80,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AudioRecorder _audioRecorder = AudioRecorder();
+  CameraController? _cameraController;
+  final PostureCaptureBuffer _postureBuffer = PostureCaptureBuffer();
+  Timer? _postureCaptureTimer;
+  Timer? _postureFlushTimer;
+  int _postureWindowIndex = 0;
+  String? _postureSessionId;
+  PostureWindowUploader? _postureUploader;
 
   bool isRecording = false;
   int recordingSeconds = 0;
@@ -118,6 +130,12 @@ class _HomePageState extends State<HomePage> {
       recordingSeconds = 0;
     });
 
+    try {
+      await _startPostureCapture();
+    } catch (e) {
+      debugPrint('자세 캡처를 시작하지 못했습니다: $e');
+    }
+
     _recordingTimer?.cancel();
 
     _recordingTimer = Timer.periodic(
@@ -143,6 +161,104 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+Future<void> _startPostureCapture() async {
+    _postureSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    _postureWindowIndex = 0;
+
+    _postureUploader = PostureWindowUploader(
+      baseUrl: 'http://127.0.0.1:8000',
+      sessionId: _postureSessionId!,
+    );
+
+    final cameras = await availableCameras();
+
+    if (cameras.isEmpty) {
+      return;
+    }
+
+    final frontCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.front,
+      orElse: () => cameras.first,
+    );
+
+    _cameraController = CameraController(
+      frontCamera,
+      ResolutionPreset.low,
+      enableAudio: false,
+    );
+
+    await _cameraController!.initialize();
+
+    _postureCaptureTimer = Timer.periodic(
+      const Duration(milliseconds: 400),
+      (_) => _capturePostureFrame(),
+    );
+
+    _postureFlushTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _flushPostureWindow(),
+    );
+  }
+
+  Future<void> _capturePostureFrame() async {
+    final controller = _cameraController;
+
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    try {
+      final file = await controller.takePicture();
+      final bytes = await file.readAsBytes();
+      final resized = _resizeJpeg(bytes);
+
+      _postureBuffer.addFrame(resized);
+    } catch (e) {
+      debugPrint('자세 프레임 캡처 실패: $e');
+    }
+  }
+
+  List<int> _resizeJpeg(Uint8List originalBytes) {
+    final decoded = img.decodeImage(originalBytes);
+
+    if (decoded == null) {
+      return originalBytes;
+    }
+
+    final resized = img.copyResize(decoded, width: 320, height: 240);
+
+    return img.encodeJpg(resized, quality: 70);
+  }
+
+  Future<void> _flushPostureWindow() async {
+    final frames = _postureBuffer.flush();
+    final windowIndex = _postureWindowIndex;
+    _postureWindowIndex += 1;
+
+    if (frames.isEmpty || _postureUploader == null) {
+      return;
+    }
+
+    try {
+      await _postureUploader!.uploadWindow(
+        windowIndex: windowIndex,
+        frames: frames,
+      );
+    } catch (e) {
+      debugPrint('자세 window 업로드 실패 (건너뜀): $e');
+    }
+  }
+
+  Future<void> _stopPostureCapture() async {
+    _postureCaptureTimer?.cancel();
+    _postureFlushTimer?.cancel();
+
+    await _flushPostureWindow();
+
+    await _cameraController?.dispose();
+    _cameraController = null;
+  }
+
 Future<void> stopRecording() async {
   if (!isRecording) {
     return;
@@ -150,6 +266,8 @@ Future<void> stopRecording() async {
 
   try {
     _recordingTimer?.cancel();
+
+    await _stopPostureCapture();
 
     final path = await _audioRecorder.stop();
 
@@ -199,6 +317,7 @@ Future<void> stopRecording() async {
     await analyzeWavBytes(
       bytes,
       filename: 'recorded_presentation.wav',
+      sessionId: _postureSessionId,
     );
   } catch (e) {
     if (!mounted) {
@@ -237,6 +356,7 @@ String formatRecordingTime(
   Future<void> analyzeWavBytes(
     Uint8List bytes, {
     String filename = 'presentation.wav',
+    String? sessionId,
   }) async {
     setState(() {
       isLoading = true;
@@ -244,11 +364,17 @@ String formatRecordingTime(
     });
 
     try {
+      final analyzeUri = Uri.parse(
+        'http://127.0.0.1:8000/analyze',
+      ).replace(
+        queryParameters: sessionId == null
+            ? null
+            : {'session_id': sessionId},
+      );
+
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse(
-          'http://127.0.0.1:8000/analyze',
-        ),
+        analyzeUri,
       );
 
       request.files.add(
@@ -384,6 +510,10 @@ String formatRecordingTime(
   void dispose() {
     _recordingTimer?.cancel();
     _audioRecorder.dispose();
+
+    _postureCaptureTimer?.cancel();
+    _postureFlushTimer?.cancel();
+    _cameraController?.dispose();
 
     super.dispose();
   }
