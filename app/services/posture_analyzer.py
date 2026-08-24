@@ -49,7 +49,10 @@ class PostureAnalyzer:
 
         return abs(
             math.degrees(
-                math.atan2(dy, dx)
+                math.atan2(
+                    abs(dy),
+                    abs(dx),
+                )
             )
         )
 

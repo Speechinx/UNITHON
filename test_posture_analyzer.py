@@ -72,6 +72,32 @@ def test_shoulder_tilt_deg_for_45_degree_tilt():
     )
 
 
+def test_shoulder_tilt_deg_is_symmetric_when_shoulder_order_is_reversed():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        left_shoulder=(0.6, 0.4),
+        right_shoulder=(0.4, 0.4),
+    )
+
+    assert analyzer._shoulder_tilt_deg(frame) == 0.0
+
+
+def test_shoulder_tilt_deg_for_45_degree_tilt_with_reversed_shoulder_order():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        left_shoulder=(0.6, 0.4),
+        right_shoulder=(0.4, 0.6),
+    )
+
+    assert math.isclose(
+        analyzer._shoulder_tilt_deg(frame),
+        45.0,
+        abs_tol=0.01,
+    )
+
+
 def test_head_down_deg_is_zero_when_nose_directly_above_shoulders():
     analyzer = PostureAnalyzer()
 
