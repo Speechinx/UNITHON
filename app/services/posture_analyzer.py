@@ -7,7 +7,7 @@ class PostureAnalyzer:
     MIN_VALID_FRAME_RATIO = 0.5
 
     SHOULDER_TILT_THRESHOLD_DEG = 8.0
-    HEAD_DOWN_THRESHOLD_DEG = 15.0
+    HEAD_DOWN_THRESHOLD_DEG = 60.0
 
     REASON_EXCEED_RATIO_THRESHOLD = 0.3
 
@@ -65,22 +65,25 @@ class PostureAnalyzer:
         right = frame["right_shoulder"]
         nose = frame["nose"]
 
-        mid_x = (left["x"] + right["x"]) / 2
         mid_y = (left["y"] + right["y"]) / 2
 
-        dx = nose["x"] - mid_x
-        dy = nose["y"] - mid_y
+        shoulder_width = math.hypot(
+            right["x"] - left["x"],
+            right["y"] - left["y"],
+        )
 
-        magnitude = math.hypot(dx, dy)
-
-        if magnitude == 0:
+        if shoulder_width == 0:
             return 0.0
 
-        cos_angle = -dy / magnitude
-        cos_angle = max(-1.0, min(1.0, cos_angle))
+        dy = nose["y"] - mid_y
 
-        return math.degrees(
-            math.acos(cos_angle)
+        return abs(
+            math.degrees(
+                math.atan2(
+                    shoulder_width,
+                    -dy,
+                )
+            )
         )
 
     def analyze_window(
