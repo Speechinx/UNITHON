@@ -8,6 +8,7 @@ import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
 
 import 'posture_capture_buffer.dart';
+import 'posture_timeline.dart';
 import 'posture_window_uploader.dart';
 
 import 'package:file_picker/file_picker.dart';
@@ -779,6 +780,27 @@ class _ResultPageState extends State<ResultPage> {
 
   bool showDetails = false;
 
+  List<PostureWindow> get _postureWindows {
+    final posture =
+        widget.result['posture'];
+
+    if (posture is! Map<String, dynamic>) {
+      return [];
+    }
+
+    final windows =
+        posture['windows'];
+
+    if (windows is! List) {
+      return [];
+    }
+
+    return windows
+        .whereType<Map<String, dynamic>>()
+        .map(PostureWindow.fromJson)
+        .toList();
+  }
+
   @override
   Widget build(
     BuildContext context,
@@ -1126,6 +1148,53 @@ class _ResultPageState extends State<ResultPage> {
                                           index;
                                     });
                                   },
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height: 16,
+                        ),
+
+                        // ==================================================
+                        // 자세 타임라인
+                        // ==================================================
+                        _SectionCard(
+                          title:
+                              '자세 타임라인',
+                          child:
+                              Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '녹화 중 촬영된 자세 신호를 구간별로 보여줍니다.',
+                                style:
+                                    TextStyle(
+                                  fontSize:
+                                      12,
+                                  color:
+                                      Colors.black54,
+                                  height:
+                                      1.4,
+                                ),
+                              ),
+
+                              const SizedBox(
+                                height: 16,
+                              ),
+
+                              if (
+                                  _postureWindows.isEmpty
+                              )
+                                const Text(
+                                  '자세 분석 결과가 없습니다.',
+                                )
+                              else
+                                PostureTimeline(
+                                  windows:
+                                      _postureWindows,
                                 ),
                             ],
                           ),
