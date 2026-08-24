@@ -102,3 +102,75 @@ def test_head_down_deg_is_90_when_nose_level_with_shoulders():
         90.0,
         abs_tol=0.01,
     )
+
+
+def test_analyze_window_signal_insufficient_when_too_many_invalid_frames():
+    analyzer = PostureAnalyzer()
+
+    frames = [None, None, None, _frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result == {
+        "signal_sufficient": False,
+        "valid_frame_ratio": 0.25,
+    }
+
+
+def test_analyze_window_empty_list_is_insufficient():
+    analyzer = PostureAnalyzer()
+
+    result = analyzer.analyze_window([])
+
+    assert result == {
+        "signal_sufficient": False,
+        "valid_frame_ratio": 0.0,
+    }
+
+
+def test_analyze_window_all_level_frames_has_zero_tilt_and_low_activity():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["signal_sufficient"] is True
+    assert result["valid_frame_ratio"] == 1.0
+    assert result["shoulder_tilt_avg_deg"] == 0.0
+    assert result["shoulder_tilt_exceed_ratio"] == 0.0
+    assert result["gesture_activity_level"] == "low"
+    assert result["reasons"] == []
+
+
+def test_analyze_window_flags_shoulder_tilt_reason_when_exceed_ratio_high():
+    analyzer = PostureAnalyzer()
+
+    tilted_frame = _frame(
+        left_shoulder=(0.4, 0.35),
+        right_shoulder=(0.6, 0.55),
+    )
+
+    frames = [tilted_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["shoulder_tilt_exceed_ratio"] == 0.8
+    assert any(
+        "어깨" in reason
+        for reason in result["reasons"]
+    )
+
+
+def test_analyze_window_detects_high_gesture_activity_from_moving_wrists():
+    analyzer = PostureAnalyzer()
+
+    frames = [
+        _frame(left_wrist=(0.1, 0.6), right_wrist=(0.9, 0.6)),
+        _frame(left_wrist=(0.5, 0.2), right_wrist=(0.5, 0.2)),
+        _frame(left_wrist=(0.1, 0.6), right_wrist=(0.9, 0.6)),
+    ]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["gesture_activity_level"] == "high"
