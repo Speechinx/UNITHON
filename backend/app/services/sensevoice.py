@@ -17,6 +17,7 @@ class SenseVoiceService:
             },
             spk_model="cam++",
             device="cpu",
+            disable_update=True,
         )
 
         self.normalizer = TextNormalizer()
