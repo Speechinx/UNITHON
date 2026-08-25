@@ -458,7 +458,8 @@ presentation_rate가 낮고 pace_level이 slow라면
 [자세]
 
 28-1. posture_signals는 카메라 프레임에서 측정한 신체 자세 신호
-    (어깨 기울기, 고개 숙임, 좌우 흔들림, 손 제스처 활동성, 상체 기울기, 팔 벌어짐, 시선(고개 회전) 이탈)일 뿐이다.
+    (어깨 기울기, 고개 숙임, 좌우 흔들림, 손 제스처 활동성, 상체 기울기, 자세 개방성,
+    제스처 파워존, 머리 정렬, 시선(고개 회전) 이탈)일 뿐이다.
 
 28-2. posture_signals의 신호로 발표자의 자신감, 긴장 정도,
     실제 심리 상태를 단정하지 마라.
@@ -466,25 +467,31 @@ presentation_rate가 낮고 pace_level이 slow라면
 28-3. 각 구간의 signal_sufficient가 false라면
     해당 구간의 자세는 언급하지 마라.
 
-28-4. shoulder_tilt_exceed_ratio나 head_down_exceed_ratio가 낮으면
+28-4. shoulder_tilt_level이나 head_down_level이 stable이면
     굳이 자세를 언급하지 않아도 된다.
 
-28-5. reasons에 기록된 구체적인 수치·구간을 근거로만
+28-5. reasons에 기록된 문장을 근거로만
     자세 피드백을 작성하라.
 
 28-6. gesture_activity_level은 좋고 나쁨을 판단하는 지표가 아니라
     활동성 수준(낮음/보통/높음)일 뿐이다.
     "low"라고 해서 무조건 개선이 필요하다고 말하지 마라.
 
-28-7. torso_lean_exceed_ratio가 낮거나 torso_signal_sufficient가 false이면
+28-7. torso_lean_level이 stable이거나 torso_signal_sufficient가 false이면
     상체 기울기를 언급하지 않아도 된다.
 
-28-8. arm_openness_level은 좋고 나쁨을 판단하는 지표가 아니라
-    팔이 벌어진 정도(닫힘/보통/열림)일 뿐이다.
-    "closed"라고 해서 무조건 소극적이라고 말하지 마라.
+28-8. 상체가 앞으로 기울어진 구간은 문제로 언급하지 마라 —
+    청중 쪽으로 몸을 기울이는 것은 카메라 신호상 정상적인 참여 신호다.
 
-28-9. gaze_away_exceed_ratio가 낮거나 gaze_signal_sufficient가 false이면
+28-9. open_posture_level과 power_zone_level은 좋고 나쁨을 판단하는 지표가 아니라
+    팔이 벌어진 정도와 손이 몸통 앞 영역에 머문 비율을 서술할 뿐이다.
+    "closed"나 "low"라고 해서 무조건 소극적이라고 말하지 마라.
+
+28-10. gaze_away_level이 stable이거나 gaze_signal_sufficient가 false이면
     시선 이탈을 언급하지 않아도 된다.
+
+28-11. head_alignment_level은 귀와 어깨의 상대 위치를 측정한
+    기하학적 사실일 뿐이며, 피로도나 집중력 저하를 단정하지 마라.
 
 
 [잘한 점]
