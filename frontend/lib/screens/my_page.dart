@@ -62,7 +62,7 @@ class _MyPageState extends State<MyPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '김서연',
+                              '스핑크스',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
@@ -71,7 +71,7 @@ class _MyPageState extends State<MyPage> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'sy.kim@email.com',
+                              'sphinx@speechinx.com',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.gray500,

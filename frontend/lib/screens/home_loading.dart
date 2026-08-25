@@ -18,7 +18,7 @@ class HomeLoading extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
           child: Text(
-            'AI Presentation Coach',
+            'Speechinx',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
