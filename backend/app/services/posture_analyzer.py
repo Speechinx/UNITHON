@@ -387,11 +387,23 @@ class PostureAnalyzer:
                 f"시선 이탈 {gaze_away_exceed_ratio * 100:.0f}% 구간"
             )
 
-        avatar_state = (
-            "bad"
-            if reasons
-            else "good"
+        low_engagement = (
+            gesture_activity == "low"
+            and arm_openness == "closed"
         )
+
+        if reasons:
+            avatar_state = (
+                "bored"
+                if low_engagement
+                else "confused"
+            )
+        else:
+            avatar_state = (
+                "focused"
+                if low_engagement
+                else "engaged"
+            )
 
         return {
             "signal_sufficient": True,

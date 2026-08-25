@@ -197,7 +197,7 @@ def test_analyze_window_all_level_frames_has_zero_tilt_and_low_activity():
     assert result["reasons"] == []
 
 
-def test_analyze_window_avatar_state_good_when_no_reasons():
+def test_analyze_window_avatar_state_engaged_when_no_reasons_and_default_engagement():
     analyzer = PostureAnalyzer()
 
     frames = [_frame() for _ in range(5)]
@@ -205,10 +205,12 @@ def test_analyze_window_avatar_state_good_when_no_reasons():
     result = analyzer.analyze_window(frames)
 
     assert result["reasons"] == []
-    assert result["avatar_state"] == "good"
+    assert result["gesture_activity_level"] == "low"
+    assert result["arm_openness_level"] == "normal"
+    assert result["avatar_state"] == "engaged"
 
 
-def test_analyze_window_avatar_state_bad_when_reasons_present():
+def test_analyze_window_avatar_state_confused_when_reasons_present_and_default_engagement():
     analyzer = PostureAnalyzer()
 
     tilted_frame = _frame(
@@ -221,7 +223,47 @@ def test_analyze_window_avatar_state_bad_when_reasons_present():
     result = analyzer.analyze_window(frames)
 
     assert result["reasons"] != []
-    assert result["avatar_state"] == "bad"
+    assert result["gesture_activity_level"] == "low"
+    assert result["arm_openness_level"] == "normal"
+    assert result["avatar_state"] == "confused"
+
+
+def test_analyze_window_avatar_state_focused_when_no_reasons_and_low_engagement():
+    analyzer = PostureAnalyzer()
+
+    closed_arm_frame = _frame(
+        left_elbow=(0.44, 0.55),
+        right_elbow=(0.56, 0.55),
+    )
+
+    frames = [closed_arm_frame for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["reasons"] == []
+    assert result["gesture_activity_level"] == "low"
+    assert result["arm_openness_level"] == "closed"
+    assert result["avatar_state"] == "focused"
+
+
+def test_analyze_window_avatar_state_bored_when_reasons_present_and_low_engagement():
+    analyzer = PostureAnalyzer()
+
+    tilted_closed_frame = _frame(
+        left_shoulder=(0.4, 0.35),
+        right_shoulder=(0.6, 0.55),
+        left_elbow=(0.44, 0.55),
+        right_elbow=(0.56, 0.55),
+    )
+
+    frames = [tilted_closed_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["reasons"] != []
+    assert result["gesture_activity_level"] == "low"
+    assert result["arm_openness_level"] == "closed"
+    assert result["avatar_state"] == "bored"
 
 
 def test_analyze_window_flags_shoulder_tilt_reason_when_exceed_ratio_high():
@@ -395,7 +437,7 @@ def test_analyze_window_result_is_compatible_with_posture_window_schema():
 
     assert window.torso_signal_sufficient is True
     assert window.gaze_signal_sufficient is True
-    assert window.avatar_state == "good"
+    assert window.avatar_state == "engaged"
 
 
 def test_arm_openness_ratio_greater_than_one_when_elbows_wider_than_shoulders():
