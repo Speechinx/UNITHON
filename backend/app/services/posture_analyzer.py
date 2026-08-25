@@ -72,6 +72,21 @@ class PostureAnalyzer:
             for key in landmark_names
         )
 
+    def _classify(
+        self,
+        value: float,
+        mild: float,
+        severe: float,
+    ) -> str:
+
+        if value >= severe:
+            return "severe"
+
+        if value >= mild:
+            return "mild"
+
+        return "stable"
+
     def _shoulder_tilt_deg(
         self,
         frame: dict,

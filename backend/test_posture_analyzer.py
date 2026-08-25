@@ -576,3 +576,23 @@ def test_analyze_window_flags_gaze_away_reason_when_exceed_ratio_high():
         "시선" in reason
         for reason in result["reasons"]
     )
+
+
+def test_classify_stable_below_mild_threshold():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._classify(5.0, mild=8.0, severe=15.0) == "stable"
+
+
+def test_classify_mild_at_or_above_mild_threshold():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._classify(8.0, mild=8.0, severe=15.0) == "mild"
+    assert analyzer._classify(12.0, mild=8.0, severe=15.0) == "mild"
+
+
+def test_classify_severe_at_or_above_severe_threshold():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._classify(15.0, mild=8.0, severe=15.0) == "severe"
+    assert analyzer._classify(20.0, mild=8.0, severe=15.0) == "severe"
