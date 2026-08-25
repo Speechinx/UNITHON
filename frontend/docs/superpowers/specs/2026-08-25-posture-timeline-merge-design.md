@@ -43,14 +43,17 @@ Pass `_postureWindowForIndex(selectedWindowIndex)` into `_WindowDetailCard` at i
 
 Render logic inside `_WindowDetailCard`, appended after the existing reasons/transcript content:
 
-- If `hasPostureData` is `false` → render nothing for posture (this session had no camera data at all; don't clutter every card with an irrelevant note).
-- Else if `postureWindow == null` (no window uploaded for this specific index — e.g. a flush failed) → small muted line: "이 구간은 자세 데이터가 없습니다."
-- Else if `!postureWindow.signalSufficient` → small muted line: "자세 신호 부족" (grey, same tone as the existing "신호 부족" language used elsewhere in the project).
-- Else → a "자세 신호" subheading followed by:
-  - 어깨 기울기: 평균 `{shoulderTiltAvgDeg}`도 (초과 구간 `{shoulderTiltExceedRatio*100}`%)
-  - 고개 숙임: 평균 `{headDownAvgDeg}`도 (초과 구간 `{headDownExceedRatio*100}`%)
-  - 제스처 활동성: 낮음/보통/높음 (map from `low`/`normal`/`high`; omit line entirely if `unknown`)
-  - `reasons`가 비어있지 않으면 각 항목을 bullet로 표시; 비어있으면 근거 줄 자체를 생략 (음성 쪽 reasons 표시 패턴과 동일)
+- If `hasPostureData` is `false` → render nothing for posture at all, not even the heading (this session had no camera data at all; don't clutter every card with an irrelevant note).
+- Otherwise (some posture data exists this session) → always render a "자세 신호" subheading + divider first, then one of:
+  - `postureWindow == null` (no window uploaded for this specific index — e.g. a flush failed) → small muted line: "이 구간은 자세 데이터가 없습니다."
+  - `!postureWindow.signalSufficient` → small muted line: "자세 신호 부족" (grey, same tone as the existing "신호 부족" language used elsewhere in the project).
+  - Else →
+    - 어깨 기울기: 평균 `{shoulderTiltAvgDeg}`도 (초과 구간 `{shoulderTiltExceedRatio*100}`%)
+    - 고개 숙임: 평균 `{headDownAvgDeg}`도 (초과 구간 `{headDownExceedRatio*100}`%)
+    - 제스처 활동성: 낮음/보통/높음/분석 없음 (map from `low`/`normal`/`high`/`unknown`). In practice `unknown` never reaches this branch — the backend only omits `gesture_activity_level` when `signal_sufficient` is false, which renders the branch above instead — but the mapping stays total rather than partial for robustness.
+    - `reasons`가 비어있지 않으면 각 항목을 bullet로 표시; 비어있으면 근거 줄 자체를 생략 (음성 쪽 reasons 표시 패턴과 동일)
+
+  (Rendering the heading unconditionally whenever `hasPostureData` is true — even for the "no data"/"insufficient" cases — reads better than a bare line with no label; this was corrected during implementation from an earlier draft of this doc that scoped the heading to the success case only.)
 
 ### 3. Trim `posture_timeline.dart` to just the model
 
@@ -109,8 +112,9 @@ Unchanged capture/upload pipeline (camera → 15s buffer → `POST /posture/wind
 ## Error handling / edge cases
 
 - Recording shorter than one posture flush (~15s): `_postureWindows` will be empty or have only a partial final window; per the rules above this renders nothing or "이 구간은 자세 데이터가 없습니다." — never a crash, matching the graceful-degradation principle already established for posture (`signal_sufficient: false`).
-- Voice and posture window counts don't match exactly (e.g. last voice window got merged per `MIN_LAST_WINDOW`, but posture's final flush didn't merge): handled by the `postureWindow == null` fallback per index — no assumption that the two lists are the same length.
+- Voice and posture window counts don't match exactly (e.g. last voice window got merged per `MIN_LAST_WINDOW`, but posture's final flush didn't merge): handled by the `postureWindow == null` fallback per index — no assumption that the two lists are the same length. Known consequence, accepted for hackathon scope: `_stopPostureCapture` always flushes one final posture window regardless of its length, but `risk_analyzer.py`'s `MIN_LAST_WINDOW = 5.0` can merge voice's trailing short window into its predecessor instead of giving it its own index. When that happens, the posture pipeline can end up with one more window than voice has — the extra trailing posture window (covering under 5s) is simply unreachable in the UI, since no voice chip exists to tap for that index. Bounded data loss, not a crash; not worth the complexity of mirroring the merge logic for a fringe amount of data.
 - Camera never granted this session: `_postureWindows` is empty for the whole session; per the design, the posture subsection is omitted entirely from every card (not shown as "부족" repeatedly for every window).
+- **Known limitation, not fixed by this design:** the "both pipelines start at 0 and advance by 15s" claim in Background assumes audio recording and posture capture begin at the same moment. In `main.dart`, posture capture actually starts a beat *after* audio recording (it awaits `availableCameras()` and `CameraController.initialize()`, which on a first-ever run blocks on the browser's camera-permission prompt). So posture window *N* can cover audio time starting slightly after voice window *N*'s nominal boundary — negligible on a warm run (already-granted permission), but potentially most of a 15-second window if the user is slow to click "Allow" on a cold run. This is an inherent property of using `window_index` as a loose join key (which the original architecture already accepted, per the companion plan's "loosely connected by index" framing) — not something this display-only change introduces or attempts to correct. If it proves visible in practice, the fix belongs in capture timing (e.g. start the posture flush timer relative to the audio start rather than camera-ready), not in this display code.
 
 ## Testing
 

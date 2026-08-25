@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- No backend changes — `/analyze`'s `posture.windows` payload already includes every field this plan needs (confirmed against `pr_helper/app/schemas/analysis_response.py`'s `PostureWindow` model: `window_index`, `signal_sufficient`, `valid_frame_ratio`, `shoulder_tilt_avg_deg`, `shoulder_tilt_exceed_ratio`, `head_down_avg_deg`, `head_down_exceed_ratio`, `sway_std`, `gesture_activity_level`, `reasons`).
+- No backend changes — `/analyze`'s `posture.windows` payload already includes every field this plan needs (confirmed against `backend/app/schemas/analysis_response.py`'s `PostureWindow` model: `window_index`, `signal_sufficient`, `valid_frame_ratio`, `shoulder_tilt_avg_deg`, `shoulder_tilt_exceed_ratio`, `head_down_avg_deg`, `head_down_exceed_ratio`, `sway_std`, `gesture_activity_level`, `reasons`).
 - Do not change the audio recording/posture capture pipeline (`startRecording`, `stopRecording`, `_startPostureCapture`, etc.) — this plan is display-only.
-- No combined single audio+posture risk score — the two signals stay independently labeled, per the project's existing "measured fact only, no fabricated combined judgment" principle (see `pr_helper` `CoachingService` prompt rules 21-28-6).
+- No combined single audio+posture risk score — the two signals stay independently labeled, per the project's existing "measured fact only, no fabricated combined judgment" principle (see `backend` `CoachingService` prompt rules 21-28-6).
 - No posture indicator on the voice timeline chips (`_RiskTimeline`/`_PostureWindowChip` stays gone) — the detail card is the single place posture is shown.
 - Match existing code style in `main.dart`: heavily broken-out multi-line formatting (one identifier/value per line in many places) is the prevailing style in this file — when editing existing blocks, preserve surrounding formatting rather than reflowing it.
 
@@ -560,7 +560,7 @@ String _gestureActivityText(
 
 Run: `cd frontend && flutter run -d chrome --web-port 5173`
 
-With the backend running (`uvicorn app.main:app --reload --reload-dir app` in `pr_helper`, `models/pose_landmarker_lite.task` present):
+With the backend running (`uvicorn app.main:app --reload --reload-dir app` in `backend`, `models/pose_landmarker_lite.task` present):
 
 1. Record ≥30 seconds with camera permission granted. Stop, wait for the result screen.
 2. Confirm there is no separate "자세 타임라인" section anymore — only the single voice timeline.
