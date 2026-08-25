@@ -32,7 +32,7 @@ class HomeStart extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'AI Presentation Coach',
+                  'Speechinx',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -40,17 +40,20 @@ class HomeStart extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.gray200),
-                ),
-                child: const Icon(
-                  Icons.help_outline,
-                  size: 18,
-                  color: AppColors.gray500,
+              GestureDetector(
+                onTap: () => _showCreditsDialog(context),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.gray200),
+                  ),
+                  child: const Icon(
+                    Icons.help_outline,
+                    size: 18,
+                    color: AppColors.gray500,
+                  ),
                 ),
               ),
             ],
@@ -63,16 +66,6 @@ class HomeStart extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'AI SPEAKER COACH',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                  color: AppColors.violet600,
-                ),
-              ),
-              const SizedBox(height: 4),
               const Text(
                 '발표를 녹음하고\nAI 피드백을 받아보세요',
                 style: TextStyle(
@@ -137,10 +130,12 @@ class HomeStart extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  '마이크 버튼을 눌러 녹음을 시작하거나 WAV 파일을 업로드\n해 발표 습관을 분석해보세요',
+                Text(
+                  mode == RecordMode.voiceMotion
+                      ? '버튼을 눌러 촬영을 시작하면\n음성과 모션을 함께 분석해드려요'
+                      : '마이크 버튼을 눌러 녹음을 시작하거나 WAV 파일을 업로드\n해 발표 습관을 분석해보세요',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     height: 1.6,
                     color: AppColors.gray500,
@@ -151,31 +146,38 @@ class HomeStart extends StatelessWidget {
           ),
         ),
 
-        // Upload
-        Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
-          child: GestureDetector(
-            onTap: onUpload,
-            child: CustomPaint(
-              painter: _DashedBorderPainter(),
-              child: const SizedBox(
-                height: 48,
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.file_upload_outlined,
-                          size: 18, color: AppColors.gray600),
-                      SizedBox(width: 8),
-                      Text(
-                        '파일 업로드',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.gray600,
+        // Upload (음성 전용 모드에서만 노출 - 마이크 버튼 위치가 밀리지 않도록
+        // 숨길 때도 동일한 높이의 공간은 유지한다)
+        Visibility(
+          visible: mode == RecordMode.voice,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
+            child: GestureDetector(
+              onTap: onUpload,
+              child: CustomPaint(
+                painter: _DashedBorderPainter(),
+                child: const SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.file_upload_outlined,
+                            size: 18, color: AppColors.gray600),
+                        SizedBox(width: 8),
+                        Text(
+                          '파일 업로드',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.gray600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -185,6 +187,84 @@ class HomeStart extends StatelessWidget {
       ],
     );
   }
+}
+
+void _showCreditsDialog(BuildContext context) {
+  const names = ['이가희', '변지현', '김세림', '백서영', '이현준'];
+
+  showDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 280),
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'MADE BY',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 1.2,
+                        color: AppColors.violet600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '상도스핑크스',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.violet600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    for (final name in names)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Text(
+                          name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.gray800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.close, size: 18, color: AppColors.gray400),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _ModeChip extends StatelessWidget {

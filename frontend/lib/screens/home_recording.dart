@@ -13,6 +13,7 @@ class HomeRecording extends StatelessWidget {
     required this.onStop,
     required this.cameraController,
     required this.avatarState,
+    required this.onGoHome,
   });
 
   final RecordMode mode;
@@ -20,6 +21,7 @@ class HomeRecording extends StatelessWidget {
   final VoidCallback onStop;
   final CameraController? cameraController;
   final String avatarState;
+  final VoidCallback onGoHome;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +37,7 @@ class HomeRecording extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'AI Presentation Coach',
+                'Speechinx',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -84,7 +86,7 @@ class HomeRecording extends StatelessWidget {
                     Text(
                       '$mm:$ss',
                       style: const TextStyle(
-                        fontSize: 46,
+                        fontSize: 30,
                         fontWeight: FontWeight.bold,
                         color: AppColors.gray900,
                         fontFeatures: [FontFeature.tabularFigures()],
@@ -182,6 +184,12 @@ class HomeRecording extends StatelessWidget {
                     border: Border.all(color: AppColors.violet100, width: 4),
                   ),
                   child: const Icon(Icons.mic, size: 52, color: AppColors.violet600),
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: onGoHome,
+                  child: const Text('홈으로 이동',
+                      style: TextStyle(fontSize: 12, color: AppColors.gray400)),
                 ),
               ],
             ),

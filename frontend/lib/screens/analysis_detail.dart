@@ -41,11 +41,19 @@ class _AnalysisDetailState extends State<AnalysisDetail> {
   bool _copied = false;
   int _selectedSeg = 0;
 
+  final ScrollController _timelineScrollController = ScrollController();
+
   static const _tabLabels = {
     DetailTab.flow: '발표 흐름',
     DetailTab.improve: '개선사항',
     DetailTab.script: '발표 스크립트',
   };
+
+  @override
+  void dispose() {
+    _timelineScrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _copyScript() async {
     await Clipboard.setData(ClipboardData(text: widget.fullScript));
@@ -179,11 +187,6 @@ class _AnalysisDetailState extends State<AnalysisDetail> {
     final selectedIndex = _selectedSeg.clamp(0, segments.length - 1);
     final seg = segments[selectedIndex];
 
-    final timeLabels = [
-      for (final s in segments) s.time.split(' ~ ').first,
-      segments.last.time.split(' ~ ').last,
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -201,51 +204,45 @@ class _AnalysisDetailState extends State<AnalysisDetail> {
                 ),
               ),
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  height: 40,
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < segments.length; i++)
-                        Expanded(
-                          flex: segments[i].flex,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedSeg = i),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: segments[i].level.color,
-                                border: selectedIndex == i
-                                    ? Border.all(
-                                        color: AppColors.white
-                                            .withValues(alpha: 0.6),
-                                        width: 2,
-                                      )
-                                    : null,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  segments[i].level.label,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.white,
-                                  ),
-                                ),
-                              ),
+              ScrollbarTheme(
+                data: ScrollbarThemeData(
+                  thumbColor: WidgetStateProperty.all(Colors.black26),
+                  trackColor: WidgetStateProperty.all(Colors.black12),
+                  trackBorderColor:
+                      WidgetStateProperty.all(Colors.transparent),
+                  thickness: WidgetStateProperty.all(5),
+                  radius: const Radius.circular(999),
+                  crossAxisMargin: 0,
+                ),
+                child: Scrollbar(
+                  controller: _timelineScrollController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _timelineScrollController,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < segments.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: _TimelineSegment(
+                              segment: segments[i],
+                              width: segments[i]
+                                  .flex
+                                  .toDouble()
+                                  .clamp(60.0, 120.0),
+                              selected: selectedIndex == i,
+                              showEndLabel: i == segments.length - 1,
+                              onTap: () => setState(() => _selectedSeg = i),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (final label in timeLabels) _TimeLabel(label),
-                ],
               ),
               const SizedBox(height: 8),
               const Text(
@@ -713,6 +710,73 @@ class _TimeLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(fontSize: 12, color: AppColors.gray400),
+    );
+  }
+}
+
+class _TimelineSegment extends StatelessWidget {
+  const _TimelineSegment({
+    required this.segment,
+    required this.width,
+    required this.selected,
+    required this.showEndLabel,
+    required this.onTap,
+  });
+
+  final Segment segment;
+  final double width;
+  final bool selected;
+  final bool showEndLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final times = segment.time.split(' ~ ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: width,
+              height: 40,
+              decoration: BoxDecoration(
+                color: segment.level.color,
+                border: selected
+                    ? Border.all(
+                        color: AppColors.white.withValues(alpha: 0.6),
+                        width: 2,
+                      )
+                    : null,
+              ),
+              child: Center(
+                child: Text(
+                  segment.level.label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: width,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _TimeLabel(times.first),
+              if (showEndLabel) _TimeLabel(times.last),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
