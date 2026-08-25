@@ -101,23 +101,33 @@ class PostureWindow(
 
     shoulder_tilt_avg_deg: float = 0.0
     shoulder_tilt_exceed_ratio: float = 0.0
+    shoulder_tilt_level: str = "unknown"
 
     head_down_avg_deg: float = 0.0
     head_down_exceed_ratio: float = 0.0
+    head_down_level: str = "unknown"
 
     sway_std: float = 0.0
+    sway_level: str = "unknown"
 
     gesture_activity_level: str = "unknown"
 
     torso_signal_sufficient: bool = False
     torso_lean_avg_deg: float = 0.0
     torso_lean_exceed_ratio: float = 0.0
+    torso_lean_level: str = "unknown"
+    torso_lean_direction: str = "unknown"
 
-    arm_openness_level: str = "unknown"
+    open_posture_level: str = "unknown"
+
+    power_zone_level: str = "unknown"
 
     gaze_signal_sufficient: bool = False
     gaze_away_avg_deg: float = 0.0
     gaze_away_exceed_ratio: float = 0.0
+    gaze_away_level: str = "unknown"
+
+    head_alignment_level: str = "unknown"
 
     reasons: List[
         str

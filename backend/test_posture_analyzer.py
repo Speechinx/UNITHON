@@ -502,6 +502,15 @@ def test_analyze_window_result_is_compatible_with_posture_window_schema():
     assert window.torso_signal_sufficient is True
     assert window.gaze_signal_sufficient is True
     assert window.avatar_state == "engaged"
+    assert window.shoulder_tilt_level == "stable"
+    assert window.head_down_level == "stable"
+    assert window.sway_level == "stable"
+    assert window.gaze_away_level == "stable"
+    assert window.torso_lean_level == "stable"
+    assert window.torso_lean_direction == "neutral"
+    assert window.open_posture_level == "normal"
+    assert window.power_zone_level == "high"
+    assert window.head_alignment_level == "stable"
 
 
 def test_open_posture_distance_is_zero_for_point_on_spine_line():
