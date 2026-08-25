@@ -60,24 +60,28 @@ void main() {
     },
   );
 
-  test('fromJson parses torso lean and arm openness fields', () {
+  test('fromJson parses torso lean and open posture fields', () {
     final window = PostureWindow.fromJson({
       'window_index': 1,
       'signal_sufficient': true,
       'torso_signal_sufficient': true,
       'torso_lean_avg_deg': 12.0,
       'torso_lean_exceed_ratio': 0.4,
-      'arm_openness_level': 'open',
+      'torso_lean_level': 'mild',
+      'torso_lean_direction': 'forward',
+      'open_posture_level': 'open',
     });
 
     expect(window.torsoSignalSufficient, true);
     expect(window.torsoLeanAvgDeg, 12.0);
     expect(window.torsoLeanExceedRatio, 0.4);
-    expect(window.armOpennessLevel, 'open');
+    expect(window.torsoLeanLevel, 'mild');
+    expect(window.torsoLeanDirection, 'forward');
+    expect(window.openPostureLevel, 'open');
   });
 
   test(
-    'fromJson defaults torso fields to insufficient and arm openness to unknown',
+    'fromJson defaults torso fields to insufficient and open posture to unknown',
     () {
       final window = PostureWindow.fromJson({
         'window_index': 0,
@@ -87,7 +91,51 @@ void main() {
       expect(window.torsoSignalSufficient, false);
       expect(window.torsoLeanAvgDeg, 0.0);
       expect(window.torsoLeanExceedRatio, 0.0);
-      expect(window.armOpennessLevel, 'unknown');
+      expect(window.torsoLeanLevel, 'unknown');
+      expect(window.torsoLeanDirection, 'unknown');
+      expect(window.openPostureLevel, 'unknown');
     },
   );
+
+  test('fromJson parses shoulder/head/gaze/sway levels', () {
+    final window = PostureWindow.fromJson({
+      'window_index': 0,
+      'signal_sufficient': true,
+      'shoulder_tilt_level': 'mild',
+      'head_down_level': 'stable',
+      'sway_level': 'severe',
+      'gaze_away_level': 'mild',
+    });
+
+    expect(window.shoulderTiltLevel, 'mild');
+    expect(window.headDownLevel, 'stable');
+    expect(window.swayLevel, 'severe');
+    expect(window.gazeAwayLevel, 'mild');
+  });
+
+  test('fromJson defaults new level fields to unknown', () {
+    final window = PostureWindow.fromJson({
+      'window_index': 0,
+      'signal_sufficient': false,
+    });
+
+    expect(window.shoulderTiltLevel, 'unknown');
+    expect(window.headDownLevel, 'unknown');
+    expect(window.swayLevel, 'unknown');
+    expect(window.gazeAwayLevel, 'unknown');
+    expect(window.powerZoneLevel, 'unknown');
+    expect(window.headAlignmentLevel, 'unknown');
+  });
+
+  test('fromJson parses power zone and head alignment levels', () {
+    final window = PostureWindow.fromJson({
+      'window_index': 0,
+      'signal_sufficient': true,
+      'power_zone_level': 'high',
+      'head_alignment_level': 'severe',
+    });
+
+    expect(window.powerZoneLevel, 'high');
+    expect(window.headAlignmentLevel, 'severe');
+  });
 }
