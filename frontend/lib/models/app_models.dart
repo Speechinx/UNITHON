@@ -93,12 +93,14 @@ class Segment {
 class HistoryItem {
   const HistoryItem({
     required this.date,
+    required this.level,
     required this.badge,
     required this.title,
     required this.detail,
   });
 
   final String date;
+  final SegmentLevel level;
   final String badge;
   final String title;
   final String detail;

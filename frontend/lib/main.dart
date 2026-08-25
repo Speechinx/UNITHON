@@ -141,6 +141,12 @@ class _AppShellState extends State<AppShell> {
       return;
     }
 
+    // 새 녹음을 시작할 때마다 이전 시도의 자세 세션 정보를 초기화한다.
+    // (voiceMotion 모드에서 analyze 실패 후 voice 전용 모드로 다시 녹음하면
+    // 이전 세션의 posture 데이터가 잘못 붙는 문제를 방지)
+    _postureSessionId = null;
+    _postureUploader = null;
+
     // await 구간 동안 중복 탭으로 재진입하는 것을 막기 위해
     // 동기적으로 즉시 가드를 세운다 (isRecording은 start() 완료 후에나 true가 됨).
     _isStartingRecording = true;
@@ -487,7 +493,7 @@ class _AppShellState extends State<AppShell> {
 
     final file = await FilePicker.pickFile(
       type: FileType.custom,
-      allowedExtensions: ['wav', 'm4a'],
+      allowedExtensions: ['wav'],
     );
 
     if (file == null) {

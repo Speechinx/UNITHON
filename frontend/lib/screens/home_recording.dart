@@ -93,8 +93,8 @@ class HomeRecording extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       mode == RecordMode.voiceMotion
-                          ? '카메라 없이 음성만 계속 진행'
-                          : '목소리가 정상적으로 입력되고 있습니다',
+                          ? '목소리가 정상적으로 입력되고 있습니다'
+                          : '카메라 없이 음성만 계속 진행',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.gray500,

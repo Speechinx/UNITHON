@@ -346,6 +346,7 @@ HistoryItem buildHistoryItem(Map<String, dynamic> result, DateTime? savedAt) {
 
   return HistoryItem(
     date: formatHistoryDate(savedAt),
+    level: level,
     badge: level.label,
     title: '${formatHistoryDuration(duration)} · $pace',
     detail:

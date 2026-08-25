@@ -46,7 +46,6 @@ class HistoryList extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
               final item = items[i];
-              final isCaution = item.badge == '주의';
               return GestureDetector(
                 onTap: () => onTap(i),
                 child: AppCard(
@@ -69,12 +68,8 @@ class HistoryList extends StatelessWidget {
                               const SizedBox(width: 8),
                               StatusBadge(
                                 label: item.badge,
-                                background: isCaution
-                                    ? AppColors.amber100
-                                    : AppColors.red100,
-                                foreground: isCaution
-                                    ? AppColors.amber700
-                                    : AppColors.red700,
+                                background: item.level.badgeBg,
+                                foreground: item.level.badgeFg,
                               ),
                             ],
                           ),
