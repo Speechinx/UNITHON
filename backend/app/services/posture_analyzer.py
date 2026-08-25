@@ -57,6 +57,9 @@ class PostureAnalyzer:
         "right_ear",
     ]
 
+    POWER_ZONE_LOW_MAX = 0.3
+    POWER_ZONE_HIGH_MIN = 0.6
+
     def _is_valid(
         self,
         frame: dict | None,
@@ -325,6 +328,37 @@ class PostureAnalyzer:
             torso_ratio >= self.MIN_VALID_FRAME_RATIO
         )
 
+        power_zone_frames = [
+            frame
+            for frame in valid_frames
+            if self._has_signal(frame, self.GESTURE_LANDMARKS)
+            and self._has_signal(frame, self.TORSO_LANDMARKS)
+        ]
+
+        power_zone_eligible_ratio = (
+            len(power_zone_frames) / len(valid_frames)
+            if valid_frames
+            else 0.0
+        )
+
+        if power_zone_eligible_ratio >= self.MIN_VALID_FRAME_RATIO:
+            in_zone_count = 0
+
+            for frame in power_zone_frames:
+                shoulder_center_y = self._shoulder_center(frame)[1]
+                hip_center_y = self._hip_center(frame)[1]
+
+                if (
+                    self._in_power_zone(frame["left_wrist"], shoulder_center_y, hip_center_y)
+                    or self._in_power_zone(frame["right_wrist"], shoulder_center_y, hip_center_y)
+                ):
+                    in_zone_count += 1
+
+            power_zone_ratio = in_zone_count / len(power_zone_frames)
+            power_zone_level = self._power_zone_level(power_zone_ratio)
+        else:
+            power_zone_level = "unknown"
+
         if torso_signal_sufficient:
             torso_leans = [
                 self._torso_lean_deg(frame)
@@ -550,6 +584,7 @@ class PostureAnalyzer:
             "gaze_away_avg_deg": round(gaze_away_avg, 2),
             "gaze_away_exceed_ratio": round(gaze_away_exceed_ratio, 2),
             "gaze_away_level": gaze_away_level,
+            "power_zone_level": power_zone_level,
             "reasons": reasons,
             "avatar_state": avatar_state,
         }
@@ -578,6 +613,28 @@ class PostureAnalyzer:
             right["x"],
             right["y"],
         )
+
+    def _in_power_zone(
+        self,
+        wrist: dict,
+        shoulder_center_y: float,
+        hip_center_y: float,
+    ) -> bool:
+
+        return shoulder_center_y <= wrist["y"] <= hip_center_y
+
+    def _power_zone_level(
+        self,
+        ratio: float,
+    ) -> str:
+
+        if ratio < self.POWER_ZONE_LOW_MAX:
+            return "low"
+
+        if ratio > self.POWER_ZONE_HIGH_MIN:
+            return "high"
+
+        return "normal"
 
     def _distance(
         self,

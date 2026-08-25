@@ -934,3 +934,78 @@ def test_analyze_window_backward_lean_still_produces_torso_reason():
 
     assert result["torso_lean_direction"] == "backward"
     assert "상체가 많이 기울어져 있었어요" in result["reasons"]
+
+
+def test_in_power_zone_true_when_wrist_between_shoulder_and_hip_y():
+    analyzer = PostureAnalyzer()
+
+    wrist = {"x": 0.5, "y": 0.55, "z": 0.0, "visibility": 1.0}
+
+    assert analyzer._in_power_zone(
+        wrist,
+        shoulder_center_y=0.4,
+        hip_center_y=0.75,
+    ) is True
+
+
+def test_in_power_zone_false_when_wrist_above_shoulder():
+    analyzer = PostureAnalyzer()
+
+    wrist = {"x": 0.5, "y": 0.2, "z": 0.0, "visibility": 1.0}
+
+    assert analyzer._in_power_zone(
+        wrist,
+        shoulder_center_y=0.4,
+        hip_center_y=0.75,
+    ) is False
+
+
+def test_in_power_zone_false_when_wrist_below_hip():
+    analyzer = PostureAnalyzer()
+
+    wrist = {"x": 0.5, "y": 0.9, "z": 0.0, "visibility": 1.0}
+
+    assert analyzer._in_power_zone(
+        wrist,
+        shoulder_center_y=0.4,
+        hip_center_y=0.75,
+    ) is False
+
+
+def test_analyze_window_default_frames_have_high_power_zone():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["power_zone_level"] == "high"
+
+
+def test_analyze_window_power_zone_low_when_wrists_above_shoulders():
+    analyzer = PostureAnalyzer()
+
+    raised_frame = _frame(
+        left_wrist=(0.35, 0.1),
+        right_wrist=(0.65, 0.1),
+    )
+
+    frames = [raised_frame for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["power_zone_level"] == "low"
+
+
+def test_analyze_window_power_zone_unknown_when_hips_low_visibility():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_hip"]["visibility"] = 0.1
+    frame["right_hip"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["power_zone_level"] == "unknown"
