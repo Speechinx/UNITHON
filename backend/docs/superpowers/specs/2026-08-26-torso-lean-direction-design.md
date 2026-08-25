@@ -1,3 +1,5 @@
+> **Superseded**: folded into and expanded by `2026-08-26-posture-plain-language-design.md`, which covers the same z-based direction work plus four more metric changes and a plain-language display layer. Kept here for the detailed derivation of the direction formula and reason-gating logic, which the newer doc references rather than repeats.
+
 # Torso Lean Direction Design
 
 > Companion docs:
