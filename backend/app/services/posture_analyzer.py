@@ -15,6 +15,8 @@ class PostureAnalyzer:
     TORSO_LEAN_MILD_DEG = 10.0
     TORSO_LEAN_SEVERE_DEG = 20.0
 
+    TORSO_LEAN_DIRECTION_Z_THRESHOLD = 0.05
+
     SWAY_MILD_STD = 0.02
     SWAY_SEVERE_STD = 0.05
 
@@ -192,6 +194,44 @@ class PostureAnalyzer:
             )
         )
 
+    def _shoulder_center_z(
+        self,
+        frame: dict,
+    ) -> float:
+
+        left = frame["left_shoulder"]
+        right = frame["right_shoulder"]
+
+        return (left["z"] + right["z"]) / 2
+
+    def _hip_center_z(
+        self,
+        frame: dict,
+    ) -> float:
+
+        left = frame["left_hip"]
+        right = frame["right_hip"]
+
+        return (left["z"] + right["z"]) / 2
+
+    def _torso_lean_direction(
+        self,
+        frame: dict,
+    ) -> str:
+
+        dz = (
+            self._shoulder_center_z(frame)
+            - self._hip_center_z(frame)
+        )
+
+        if dz <= -self.TORSO_LEAN_DIRECTION_Z_THRESHOLD:
+            return "forward"
+
+        if dz >= self.TORSO_LEAN_DIRECTION_Z_THRESHOLD:
+            return "backward"
+
+        return "neutral"
+
     def _gaze_away_deg(
         self,
         frame: dict,
@@ -301,10 +341,27 @@ class PostureAnalyzer:
                 self.TORSO_LEAN_MILD_DEG,
                 self.TORSO_LEAN_SEVERE_DEG,
             )
+
+            torso_directions = [
+                self._torso_lean_direction(frame)
+                for frame in torso_frames
+            ]
+
+            direction_counts = {
+                "neutral": torso_directions.count("neutral"),
+                "backward": torso_directions.count("backward"),
+                "forward": torso_directions.count("forward"),
+            }
+
+            torso_lean_direction = max(
+                direction_counts,
+                key=lambda direction: direction_counts[direction],
+            )
         else:
             torso_lean_avg = 0.0
             torso_lean_exceed_ratio = 0.0
             torso_lean_level = "unknown"
+            torso_lean_direction = "unknown"
 
         arm_frames = [
             frame
@@ -430,6 +487,7 @@ class PostureAnalyzer:
         if (
             torso_signal_sufficient
             and torso_lean_exceed_ratio >= self.REASON_EXCEED_RATIO_THRESHOLD
+            and torso_lean_direction != "forward"
         ):
             if torso_lean_level == "severe":
                 reasons.append("상체가 많이 기울어져 있었어요")
@@ -484,6 +542,7 @@ class PostureAnalyzer:
             "torso_lean_avg_deg": round(torso_lean_avg, 2),
             "torso_lean_exceed_ratio": round(torso_lean_exceed_ratio, 2),
             "torso_lean_level": torso_lean_level,
+            "torso_lean_direction": torso_lean_direction,
             "arm_openness_level": arm_openness,
             "gaze_signal_sufficient": gaze_signal_sufficient,
             "gaze_away_avg_deg": round(gaze_away_avg, 2),

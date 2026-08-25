@@ -5,8 +5,8 @@ from app.services.posture_analyzer import (
 )
 
 
-def _landmark(x, y, visibility=1.0):
-    return {"x": x, "y": y, "visibility": visibility}
+def _landmark(x, y, z=0.0, visibility=1.0):
+    return {"x": x, "y": y, "z": z, "visibility": visibility}
 
 
 def _frame(
@@ -21,20 +21,26 @@ def _frame(
     right_hip=(0.55, 0.75),
     left_elbow=(0.38, 0.55),
     right_elbow=(0.62, 0.55),
+    z=None,
     visibility=1.0,
 ):
+    z = z or {}
+
+    def landmark(name, xy):
+        return _landmark(*xy, z=z.get(name, 0.0), visibility=visibility)
+
     return {
-        "nose": _landmark(*nose, visibility),
-        "left_ear": _landmark(*left_ear, visibility),
-        "right_ear": _landmark(*right_ear, visibility),
-        "left_shoulder": _landmark(*left_shoulder, visibility),
-        "right_shoulder": _landmark(*right_shoulder, visibility),
-        "left_wrist": _landmark(*left_wrist, visibility),
-        "right_wrist": _landmark(*right_wrist, visibility),
-        "left_hip": _landmark(*left_hip, visibility),
-        "right_hip": _landmark(*right_hip, visibility),
-        "left_elbow": _landmark(*left_elbow, visibility),
-        "right_elbow": _landmark(*right_elbow, visibility),
+        "nose": landmark("nose", nose),
+        "left_ear": landmark("left_ear", left_ear),
+        "right_ear": landmark("right_ear", right_ear),
+        "left_shoulder": landmark("left_shoulder", left_shoulder),
+        "right_shoulder": landmark("right_shoulder", right_shoulder),
+        "left_wrist": landmark("left_wrist", left_wrist),
+        "right_wrist": landmark("right_wrist", right_wrist),
+        "left_hip": landmark("left_hip", left_hip),
+        "right_hip": landmark("right_hip", right_hip),
+        "left_elbow": landmark("left_elbow", left_elbow),
+        "right_elbow": landmark("right_elbow", right_elbow),
     }
 
 
@@ -801,3 +807,111 @@ def test_analyze_window_sway_level_severe_produces_plain_reason():
 
     assert result["sway_level"] == "severe"
     assert "몸이 자주 좌우로 흔들렸어요" in result["reasons"]
+
+
+def test_torso_lean_direction_forward_when_shoulders_closer_than_hips():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        z={
+            "left_shoulder": -0.1,
+            "right_shoulder": -0.1,
+            "left_hip": 0.0,
+            "right_hip": 0.0,
+        }
+    )
+
+    assert analyzer._torso_lean_direction(frame) == "forward"
+
+
+def test_torso_lean_direction_backward_when_shoulders_farther_than_hips():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        z={
+            "left_shoulder": 0.1,
+            "right_shoulder": 0.1,
+            "left_hip": 0.0,
+            "right_hip": 0.0,
+        }
+    )
+
+    assert analyzer._torso_lean_direction(frame) == "backward"
+
+
+def test_torso_lean_direction_neutral_when_within_threshold():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        z={
+            "left_shoulder": 0.01,
+            "right_shoulder": 0.01,
+            "left_hip": 0.0,
+            "right_hip": 0.0,
+        }
+    )
+
+    assert analyzer._torso_lean_direction(frame) == "neutral"
+
+
+def test_analyze_window_torso_lean_direction_unknown_when_insufficient():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_hip"]["visibility"] = 0.1
+    frame["right_hip"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_lean_direction"] == "unknown"
+
+
+def test_analyze_window_forward_lean_does_not_produce_torso_reason():
+    analyzer = PostureAnalyzer()
+
+    leaned_forward_frame = _frame(
+        left_shoulder=(0.55, 0.486),
+        right_shoulder=(0.55, 0.486),
+        left_hip=(0.4, 0.7),
+        right_hip=(0.4, 0.7),
+        z={
+            "left_shoulder": -0.1,
+            "right_shoulder": -0.1,
+            "left_hip": 0.0,
+            "right_hip": 0.0,
+        },
+    )
+
+    frames = [leaned_forward_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_lean_level"] == "severe"
+    assert result["torso_lean_direction"] == "forward"
+    assert not any("상체" in reason for reason in result["reasons"])
+
+
+def test_analyze_window_backward_lean_still_produces_torso_reason():
+    analyzer = PostureAnalyzer()
+
+    leaned_backward_frame = _frame(
+        left_shoulder=(0.55, 0.486),
+        right_shoulder=(0.55, 0.486),
+        left_hip=(0.4, 0.7),
+        right_hip=(0.4, 0.7),
+        z={
+            "left_shoulder": 0.1,
+            "right_shoulder": 0.1,
+            "left_hip": 0.0,
+            "right_hip": 0.0,
+        },
+    )
+
+    frames = [leaned_backward_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_lean_direction"] == "backward"
+    assert "상체가 많이 기울어져 있었어요" in result["reasons"]
