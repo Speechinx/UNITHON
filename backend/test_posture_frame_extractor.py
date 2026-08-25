@@ -80,6 +80,8 @@ def test_extract_maps_landmark_indices_correctly(monkeypatch, extractor):
 
     assert result == {
         "nose": {"x": 0.0, "y": 0.0, "visibility": 0.0},
+        "left_ear": {"x": 0.07, "y": 0.07, "visibility": 0.07},
+        "right_ear": {"x": 0.08, "y": 0.08, "visibility": 0.08},
         "left_shoulder": {"x": 0.11, "y": 0.11, "visibility": 0.11},
         "right_shoulder": {"x": 0.12, "y": 0.12, "visibility": 0.12},
         "left_elbow": {"x": 0.13, "y": 0.13, "visibility": 0.13},

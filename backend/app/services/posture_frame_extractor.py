@@ -8,6 +8,8 @@ from mediapipe.tasks.python import vision as mp_vision
 
 LANDMARK_INDICES = {
     "nose": 0,
+    "left_ear": 7,
+    "right_ear": 8,
     "left_shoulder": 11,
     "right_shoulder": 12,
     "left_elbow": 13,
