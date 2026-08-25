@@ -596,3 +596,157 @@ def test_classify_severe_at_or_above_severe_threshold():
 
     assert analyzer._classify(15.0, mild=8.0, severe=15.0) == "severe"
     assert analyzer._classify(20.0, mild=8.0, severe=15.0) == "severe"
+
+
+def test_analyze_window_shoulder_tilt_level_mild_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    tilted_frame = _frame(
+        left_shoulder=(0.4, 0.38),
+        right_shoulder=(0.6, 0.43),
+    )
+
+    frames = [tilted_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["shoulder_tilt_level"] == "mild"
+    assert "어깨가 약간 기울어진 구간이 있었어요" in result["reasons"]
+
+
+def test_analyze_window_shoulder_tilt_level_severe_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    tilted_frame = _frame(
+        left_shoulder=(0.4, 0.35),
+        right_shoulder=(0.6, 0.55),
+    )
+
+    frames = [tilted_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["shoulder_tilt_level"] == "severe"
+    assert "어깨가 한쪽으로 많이 기울어져 있었어요" in result["reasons"]
+
+
+def test_analyze_window_shoulder_tilt_level_stable_for_level_frames():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["shoulder_tilt_level"] == "stable"
+    assert result["reasons"] == []
+
+
+def test_analyze_window_head_down_level_mild_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    hunched_frame = _frame(
+        nose=(0.5, 0.42),
+        left_shoulder=(0.4, 0.5),
+        right_shoulder=(0.6, 0.5),
+    )
+
+    frames = [hunched_frame] * 4 + [_frame(nose=(0.5, 0.1))]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["head_down_level"] == "mild"
+    assert "고개를 자주 숙이고 있었어요" in result["reasons"]
+
+
+def test_analyze_window_head_down_level_severe_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    very_hunched_frame = _frame(
+        nose=(0.5, 0.495),
+        left_shoulder=(0.4, 0.5),
+        right_shoulder=(0.6, 0.5),
+    )
+
+    frames = [very_hunched_frame] * 4 + [_frame(nose=(0.5, 0.1))]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["head_down_level"] == "severe"
+    assert "고개를 많이 숙인 채로 발표했어요" in result["reasons"]
+
+
+def test_analyze_window_gaze_away_level_mild_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    turned_frame = _frame(
+        nose=(0.545, 0.2),
+        left_ear=(0.42, 0.2),
+        right_ear=(0.58, 0.2),
+    )
+
+    frames = [turned_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["gaze_away_level"] == "mild"
+    assert "시선이 자주 옆으로 벗어났어요" in result["reasons"]
+
+
+def test_analyze_window_gaze_away_level_severe_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    turned_frame = _frame(
+        nose=(0.58, 0.2),
+        left_ear=(0.42, 0.2),
+        right_ear=(0.58, 0.2),
+    )
+
+    frames = [turned_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["gaze_away_level"] == "severe"
+    assert "시선이 많이 벗어나 있었어요" in result["reasons"]
+
+
+def test_analyze_window_sway_level_stable_for_level_frames():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(4)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["sway_level"] == "stable"
+    assert result["reasons"] == []
+
+
+def test_analyze_window_sway_level_mild_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    frames = [
+        _frame(left_shoulder=(0.37, 0.4), right_shoulder=(0.57, 0.4)),
+        _frame(left_shoulder=(0.43, 0.4), right_shoulder=(0.63, 0.4)),
+        _frame(left_shoulder=(0.37, 0.4), right_shoulder=(0.57, 0.4)),
+        _frame(left_shoulder=(0.43, 0.4), right_shoulder=(0.63, 0.4)),
+    ]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["sway_level"] == "mild"
+    assert "몸이 조금 흔들렸어요" in result["reasons"]
+
+
+def test_analyze_window_sway_level_severe_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    frames = [
+        _frame(left_shoulder=(0.32, 0.4), right_shoulder=(0.52, 0.4)),
+        _frame(left_shoulder=(0.48, 0.4), right_shoulder=(0.68, 0.4)),
+        _frame(left_shoulder=(0.32, 0.4), right_shoulder=(0.52, 0.4)),
+        _frame(left_shoulder=(0.48, 0.4), right_shoulder=(0.68, 0.4)),
+    ]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["sway_level"] == "severe"
+    assert "몸이 자주 좌우로 흔들렸어요" in result["reasons"]
