@@ -29,6 +29,9 @@ import 'theme/app_colors.dart';
 import 'utils/result_mapper.dart' as mapper;
 import 'widgets/bottom_nav.dart';
 
+const String backendBaseUrl =
+    'https://pr-coach-backend-437923142335.asia-northeast3.run.app';
+
 void main() {
   runApp(
     const PresentationCoachApp(),
@@ -307,12 +310,12 @@ class _AppShellState extends State<AppShell> {
     _postureWindowIndex = 0;
 
     _postureUploader = PostureWindowUploader(
-      baseUrl: 'http://127.0.0.1:8000',
+      baseUrl: backendBaseUrl,
       sessionId: _postureSessionId!,
     );
 
     _previewUploader = PosturePreviewUploader(
-      baseUrl: 'http://127.0.0.1:8000',
+      baseUrl: backendBaseUrl,
     );
 
     final cameras = await availableCameras();
@@ -494,7 +497,7 @@ class _AppShellState extends State<AppShell> {
 
     try {
       final analyzeUri = Uri.parse(
-        'http://127.0.0.1:8000/analyze',
+        '$backendBaseUrl/analyze',
       ).replace(
         queryParameters:
             sessionId == null ? null : {'session_id': sessionId},
