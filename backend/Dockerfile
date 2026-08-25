@@ -10,9 +10,15 @@ FROM python:3.11-slim
 
 # libgl1/libglib2.0-0: mediapipe pulls in opencv-contrib-python, which needs
 # libGL at import time even for CPU-only, headless use.
+# libgles2/libegl1: mediapipe's PoseLandmarker (Tasks API) dlopens its native
+# lib via a GLES/EGL context even when running on CPU only — without these,
+# PostureFrameExtractor.__init__ fails with
+# "OSError: libGLESv2.so.2: cannot open shared object file".
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
+    libgles2 \
+    libegl1 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
