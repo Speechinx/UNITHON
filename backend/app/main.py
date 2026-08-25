@@ -22,6 +22,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        "https://unithon-m2z4.onrender.com",
     ],
     # `flutter run -d chrome`는 매번 임의의 포트에서 뜨므로 고정 목록만으로는
     # 막힌다. 로컬 개발 환경(localhost/127.0.0.1)의 모든 포트를 추가로 허용한다.
