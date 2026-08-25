@@ -370,6 +370,18 @@ def test_arm_openness_level_normal_at_middle_ratio():
     assert analyzer._arm_openness_level([1.0, 1.0]) == "normal"
 
 
+def test_arm_openness_level_normal_at_low_boundary():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._arm_openness_level([0.8]) == "normal"
+
+
+def test_arm_openness_level_normal_at_high_boundary():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._arm_openness_level([1.3]) == "normal"
+
+
 def test_analyze_window_all_level_frames_has_normal_arm_openness():
     analyzer = PostureAnalyzer()
 
