@@ -84,7 +84,7 @@ class _ReactionAvatarState extends State<ReactionAvatar> {
           setState(() {});
         })
         .catchError((Object _) {
-          if (!mounted) {
+          if (!mounted || _controller != controller) {
             return;
           }
 
