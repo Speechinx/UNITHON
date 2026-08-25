@@ -466,8 +466,8 @@ presentation_rate가 낮고 pace_level이 slow라면
 
 28-10. avatar_state는 녹음 화면의 아바타 이모지를 그리기 위한
     UI 표시용 힌트일 뿐이다.
-    avatar_state의 "good"/"bad"/"unknown" 값을 인용하거나
-    코칭 근거로 삼지 마라. reasons와 수치 신호만 근거로 삼아라.
+    avatar_state의 "focused"/"engaged"/"confused"/"bored"/"unknown" 값을
+    인용하거나 코칭 근거로 삼지 마라. reasons와 수치 신호만 근거로 삼아라.
 
 
 [잘한 점]
