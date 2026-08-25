@@ -13,6 +13,7 @@ import 'posture_blob_cleanup_stub.dart'
 import 'posture_capture_buffer.dart';
 import 'posture_timeline.dart';
 import 'posture_window_uploader.dart';
+import 'avatar_widget.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -93,6 +94,7 @@ class _HomePageState extends State<HomePage> {
   int _postureWindowIndex = 0;
   String? _postureSessionId;
   PostureWindowUploader? _postureUploader;
+  String _avatarState = 'idle';
 
   bool isRecording = false;
   int recordingSeconds = 0;
@@ -134,6 +136,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       isRecording = true;
       recordingSeconds = 0;
+      _avatarState = 'idle';
     });
 
     _recordingTimer?.cancel();
@@ -262,10 +265,18 @@ Future<void> _startPostureCapture() async {
     }
 
     try {
-      await _postureUploader!.uploadWindow(
+      final result = await _postureUploader!.uploadWindow(
         windowIndex: windowIndex,
         frames: frames,
       );
+
+      final avatarState = result['avatar_state'] as String?;
+
+      if (avatarState != null && mounted) {
+        setState(() {
+          _avatarState = avatarState;
+        });
+      }
     } catch (e) {
       debugPrint('자세 window 업로드 실패 (건너뜀): $e');
     }
@@ -703,6 +714,16 @@ String formatRecordingTime(
                           ),
                         ),
                       ),
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 20,
+                  ),
+
+                  Center(
+                    child: AvatarWidget(
+                      state: _avatarState,
                     ),
                   ),
 
