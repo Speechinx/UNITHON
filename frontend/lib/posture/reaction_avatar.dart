@@ -16,16 +16,15 @@ String? reactionAssetForState(String state) {
 }
 
 /// 자세 상태(avatar_state)에 따라 반응 영상을 루프 재생하는 위젯.
-/// 반응 영상이 없는 상태거나 로딩 중이면 [AvatarWidget] 이모지로 폴백한다.
+/// 부모가 준 사각형 영역을 꽉 채워서 재생하며, 반응 영상이 없는 상태거나
+/// 로딩 중이면 [AvatarWidget] 이모지로 폴백한다.
 class ReactionAvatar extends StatefulWidget {
   const ReactionAvatar({
     super.key,
     required this.state,
-    this.size = 96,
   });
 
   final String state;
-  final double size;
 
   @override
   State<ReactionAvatar> createState() => _ReactionAvatarState();
@@ -107,20 +106,16 @@ class _ReactionAvatarState extends State<ReactionAvatar> {
     final controller = _controller;
 
     if (controller == null || !controller.value.isInitialized) {
-      return AvatarWidget(state: widget.state);
+      return Center(child: AvatarWidget(state: widget.state));
     }
 
-    return ClipOval(
-      child: SizedBox(
-        width: widget.size,
-        height: widget.size,
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: controller.value.size.width,
-            height: controller.value.size.height,
-            child: VideoPlayer(controller),
-          ),
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: controller.value.size.width,
+          height: controller.value.size.height,
+          child: VideoPlayer(controller),
         ),
       ),
     );

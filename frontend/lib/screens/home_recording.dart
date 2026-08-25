@@ -223,9 +223,7 @@ class HomeRecording extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Center(
-                    child: ReactionAvatar(state: avatarState, size: 200),
-                  ),
+                  ReactionAvatar(state: avatarState),
                   Positioned(
                     bottom: 12,
                     right: 12,

@@ -114,7 +114,7 @@ class _AppShellState extends State<AppShell> {
   int _postureWindowIndex = 0;
   String? _postureSessionId;
   PostureWindowUploader? _postureUploader;
-  String _avatarState = 'unknown';
+  String _avatarState = 'focused';
 
   @override
   void initState() {
@@ -181,6 +181,9 @@ class _AppShellState extends State<AppShell> {
         isRecording = true;
         recordingSeconds = 0;
         homeScreen = HomeScreen.recording;
+        // 첫 자세 window 분석이 끝나기 전(약 15초)에도 공백 없이 바로
+        // 반응 영상이 보이도록 기본값을 '집중'으로 시작한다.
+        _avatarState = 'focused';
       });
 
       _recordingTimer?.cancel();
