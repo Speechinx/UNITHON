@@ -46,8 +46,8 @@ class PostureAnalyzer:
         "right_elbow",
     ]
 
-    ARM_OPENNESS_LOW_THRESHOLD = 0.8
-    ARM_OPENNESS_HIGH_THRESHOLD = 1.3
+    OPEN_POSTURE_CLOSED_MAX = 0.4
+    OPEN_POSTURE_OPEN_MIN = 1.0
 
     GAZE_AWAY_MILD_DEG = 20.0
     GAZE_AWAY_SEVERE_DEG = 35.0
@@ -363,27 +363,29 @@ class PostureAnalyzer:
             torso_lean_level = "unknown"
             torso_lean_direction = "unknown"
 
-        arm_frames = [
+        open_posture_frames = [
             frame
             for frame in valid_frames
             if self._has_signal(frame, self.ARM_LANDMARKS)
+            and self._has_signal(frame, self.GESTURE_LANDMARKS)
+            and self._has_signal(frame, self.TORSO_LANDMARKS)
         ]
 
-        arm_ratio = (
-            len(arm_frames) / len(valid_frames)
+        open_posture_ratio = (
+            len(open_posture_frames) / len(valid_frames)
             if valid_frames
             else 0.0
         )
 
-        if arm_ratio >= self.MIN_VALID_FRAME_RATIO:
-            arm_openness = self._arm_openness_level(
+        if open_posture_ratio >= self.MIN_VALID_FRAME_RATIO:
+            open_posture_level = self._open_posture_level(
                 [
-                    self._arm_openness_ratio(frame)
-                    for frame in arm_frames
+                    self._open_posture_score(frame)
+                    for frame in open_posture_frames
                 ]
             )
         else:
-            arm_openness = "unknown"
+            open_posture_level = "unknown"
 
         gaze_frames = [
             frame
@@ -510,7 +512,7 @@ class PostureAnalyzer:
 
         low_engagement = (
             gesture_activity == "low"
-            and arm_openness == "closed"
+            and open_posture_level == "closed"
         )
 
         if reasons:
@@ -543,7 +545,7 @@ class PostureAnalyzer:
             "torso_lean_exceed_ratio": round(torso_lean_exceed_ratio, 2),
             "torso_lean_level": torso_lean_level,
             "torso_lean_direction": torso_lean_direction,
-            "arm_openness_level": arm_openness,
+            "open_posture_level": open_posture_level,
             "gaze_signal_sufficient": gaze_signal_sufficient,
             "gaze_away_avg_deg": round(gaze_away_avg, 2),
             "gaze_away_exceed_ratio": round(gaze_away_exceed_ratio, 2),
@@ -588,37 +590,73 @@ class PostureAnalyzer:
             b["y"] - a["y"],
         )
 
-    def _arm_openness_ratio(
+    def _open_posture_distance(
+        self,
+        point: dict,
+        shoulder_center: tuple[float, float],
+        hip_center: tuple[float, float],
+        shoulder_width: float,
+    ) -> float:
+
+        ax, ay = hip_center
+        bx, by = shoulder_center
+        px, py = point["x"], point["y"]
+
+        line_length = math.hypot(bx - ax, by - ay)
+
+        if line_length == 0 or shoulder_width == 0:
+            return 0.0
+
+        cross = abs(
+            (bx - ax) * (py - ay)
+            - (by - ay) * (px - ax)
+        )
+
+        return (cross / line_length) / shoulder_width
+
+    def _open_posture_score(
         self,
         frame: dict,
     ) -> float:
+
+        shoulder_center = self._shoulder_center(frame)
+        hip_center = self._hip_center(frame)
 
         shoulder_width = self._distance(
             frame["left_shoulder"],
             frame["right_shoulder"],
         )
 
-        if shoulder_width == 0:
-            return 1.0
-
-        elbow_width = self._distance(
+        points = [
             frame["left_elbow"],
             frame["right_elbow"],
-        )
+            frame["left_wrist"],
+            frame["right_wrist"],
+        ]
 
-        return elbow_width / shoulder_width
+        distances = [
+            self._open_posture_distance(
+                point,
+                shoulder_center,
+                hip_center,
+                shoulder_width,
+            )
+            for point in points
+        ]
 
-    def _arm_openness_level(
+        return statistics.mean(distances)
+
+    def _open_posture_level(
         self,
-        ratios: list[float],
+        scores: list[float],
     ) -> str:
 
-        avg_ratio = statistics.mean(ratios)
+        avg_score = statistics.mean(scores)
 
-        if avg_ratio < self.ARM_OPENNESS_LOW_THRESHOLD:
+        if avg_score < self.OPEN_POSTURE_CLOSED_MAX:
             return "closed"
 
-        if avg_ratio > self.ARM_OPENNESS_HIGH_THRESHOLD:
+        if avg_score > self.OPEN_POSTURE_OPEN_MIN:
             return "open"
 
         return "normal"

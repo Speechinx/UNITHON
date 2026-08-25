@@ -212,7 +212,7 @@ def test_analyze_window_avatar_state_engaged_when_no_reasons_and_default_engagem
 
     assert result["reasons"] == []
     assert result["gesture_activity_level"] == "low"
-    assert result["arm_openness_level"] == "normal"
+    assert result["open_posture_level"] == "normal"
     assert result["avatar_state"] == "engaged"
 
 
@@ -230,25 +230,27 @@ def test_analyze_window_avatar_state_confused_when_reasons_present_and_default_e
 
     assert result["reasons"] != []
     assert result["gesture_activity_level"] == "low"
-    assert result["arm_openness_level"] == "normal"
+    assert result["open_posture_level"] == "normal"
     assert result["avatar_state"] == "confused"
 
 
 def test_analyze_window_avatar_state_focused_when_no_reasons_and_low_engagement():
     analyzer = PostureAnalyzer()
 
-    closed_arm_frame = _frame(
-        left_elbow=(0.44, 0.55),
-        right_elbow=(0.56, 0.55),
+    closed_posture_frame = _frame(
+        left_elbow=(0.47, 0.55),
+        right_elbow=(0.53, 0.55),
+        left_wrist=(0.48, 0.6),
+        right_wrist=(0.52, 0.6),
     )
 
-    frames = [closed_arm_frame for _ in range(5)]
+    frames = [closed_posture_frame for _ in range(5)]
 
     result = analyzer.analyze_window(frames)
 
     assert result["reasons"] == []
     assert result["gesture_activity_level"] == "low"
-    assert result["arm_openness_level"] == "closed"
+    assert result["open_posture_level"] == "closed"
     assert result["avatar_state"] == "focused"
 
 
@@ -258,17 +260,22 @@ def test_analyze_window_avatar_state_bored_when_reasons_present_and_low_engageme
     tilted_closed_frame = _frame(
         left_shoulder=(0.4, 0.35),
         right_shoulder=(0.6, 0.55),
-        left_elbow=(0.44, 0.55),
-        right_elbow=(0.56, 0.55),
+        left_elbow=(0.47, 0.55),
+        right_elbow=(0.53, 0.55),
+        left_wrist=(0.48, 0.6),
+        right_wrist=(0.52, 0.6),
     )
 
-    frames = [tilted_closed_frame] * 4 + [_frame()]
+    # All 5 frames identical (not "4 + 1 default" like the other severity
+    # tests) — the wrists must not move between frames here, or
+    # gesture_activity_level would compute as "high" instead of "low".
+    frames = [tilted_closed_frame for _ in range(5)]
 
     result = analyzer.analyze_window(frames)
 
     assert result["reasons"] != []
     assert result["gesture_activity_level"] == "low"
-    assert result["arm_openness_level"] == "closed"
+    assert result["open_posture_level"] == "closed"
     assert result["avatar_state"] == "bored"
 
 
@@ -497,79 +504,94 @@ def test_analyze_window_result_is_compatible_with_posture_window_schema():
     assert window.avatar_state == "engaged"
 
 
-def test_arm_openness_ratio_greater_than_one_when_elbows_wider_than_shoulders():
+def test_open_posture_distance_is_zero_for_point_on_spine_line():
     analyzer = PostureAnalyzer()
 
-    frame = _frame(
-        left_shoulder=(0.45, 0.4),
-        right_shoulder=(0.55, 0.4),
-        left_elbow=(0.2, 0.4),
-        right_elbow=(0.8, 0.4),
+    point = {"x": 0.5, "y": 0.55, "z": 0.0, "visibility": 1.0}
+
+    assert analyzer._open_posture_distance(
+        point,
+        shoulder_center=(0.5, 0.4),
+        hip_center=(0.5, 0.75),
+        shoulder_width=0.2,
+    ) == 0.0
+
+
+def test_open_posture_distance_normalizes_by_shoulder_width():
+    analyzer = PostureAnalyzer()
+
+    point = {"x": 0.6, "y": 0.55, "z": 0.0, "visibility": 1.0}
+
+    distance = analyzer._open_posture_distance(
+        point,
+        shoulder_center=(0.5, 0.4),
+        hip_center=(0.5, 0.75),
+        shoulder_width=0.2,
     )
 
-    assert math.isclose(
-        analyzer._arm_openness_ratio(frame),
-        6.0,
-        rel_tol=1e-9,
-    )
+    assert math.isclose(distance, 0.5, abs_tol=0.01)
 
 
-def test_arm_openness_level_closed_when_ratio_low():
-    analyzer = PostureAnalyzer()
-
-    assert analyzer._arm_openness_level([0.5, 0.6]) == "closed"
-
-
-def test_arm_openness_level_open_when_ratio_high():
-    analyzer = PostureAnalyzer()
-
-    assert analyzer._arm_openness_level([1.5, 1.6]) == "open"
-
-
-def test_arm_openness_level_normal_at_middle_ratio():
-    analyzer = PostureAnalyzer()
-
-    assert analyzer._arm_openness_level([1.0, 1.0]) == "normal"
-
-
-def test_arm_openness_level_normal_at_low_boundary():
-    analyzer = PostureAnalyzer()
-
-    assert analyzer._arm_openness_level([0.8]) == "normal"
-
-
-def test_arm_openness_level_normal_at_high_boundary():
-    analyzer = PostureAnalyzer()
-
-    assert analyzer._arm_openness_level([1.3]) == "normal"
-
-
-def test_analyze_window_all_level_frames_has_normal_arm_openness():
+def test_analyze_window_default_frames_have_normal_open_posture():
     analyzer = PostureAnalyzer()
 
     frames = [_frame() for _ in range(5)]
 
     result = analyzer.analyze_window(frames)
 
-    assert result["arm_openness_level"] == "normal"
+    assert result["open_posture_level"] == "normal"
 
 
-def test_analyze_window_arm_openness_unknown_when_elbows_low_visibility():
+def test_analyze_window_open_posture_closed_when_limbs_near_spine():
+    analyzer = PostureAnalyzer()
+
+    closed_frame = _frame(
+        left_elbow=(0.47, 0.55),
+        right_elbow=(0.53, 0.55),
+        left_wrist=(0.48, 0.6),
+        right_wrist=(0.52, 0.6),
+    )
+
+    frames = [closed_frame for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["open_posture_level"] == "closed"
+
+
+def test_analyze_window_open_posture_open_when_limbs_far_from_spine():
+    analyzer = PostureAnalyzer()
+
+    open_frame = _frame(
+        left_elbow=(0.1, 0.55),
+        right_elbow=(0.9, 0.55),
+        left_wrist=(0.05, 0.6),
+        right_wrist=(0.95, 0.6),
+    )
+
+    frames = [open_frame for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["open_posture_level"] == "open"
+
+
+def test_analyze_window_open_posture_unknown_when_hips_low_visibility():
     analyzer = PostureAnalyzer()
 
     frame = _frame()
-    frame["left_elbow"]["visibility"] = 0.1
-    frame["right_elbow"]["visibility"] = 0.1
+    frame["left_hip"]["visibility"] = 0.1
+    frame["right_hip"]["visibility"] = 0.1
 
     frames = [frame for _ in range(10)]
 
     result = analyzer.analyze_window(frames)
 
     assert result["signal_sufficient"] is True
-    assert result["arm_openness_level"] == "unknown"
+    assert result["open_posture_level"] == "unknown"
 
 
-def test_analyze_window_avatar_state_engaged_when_arm_openness_unknown():
+def test_analyze_window_open_posture_unknown_when_elbows_low_visibility():
     analyzer = PostureAnalyzer()
 
     frame = _frame()
@@ -580,10 +602,7 @@ def test_analyze_window_avatar_state_engaged_when_arm_openness_unknown():
 
     result = analyzer.analyze_window(frames)
 
-    assert result["reasons"] == []
-    assert result["gesture_activity_level"] == "low"
-    assert result["arm_openness_level"] == "unknown"
-    assert result["avatar_state"] == "engaged"
+    assert result["open_posture_level"] == "unknown"
 
 
 def test_analyze_window_all_level_frames_reports_gaze_away_too():
