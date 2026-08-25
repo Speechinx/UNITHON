@@ -88,6 +88,8 @@ class _ReactionAvatarState extends State<ReactionAvatar> {
             return;
           }
 
+          controller.dispose();
+
           setState(() {
             _controller = null;
           });

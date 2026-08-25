@@ -104,23 +104,6 @@ class HomeRecording extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const Expanded(child: Divider(color: AppColors.gray200, height: 1)),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('녹음 시작',
-                          style: TextStyle(fontSize: 12, color: AppColors.gray400)),
-                    ),
-                    const Expanded(child: Divider(color: AppColors.gray200, height: 1)),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('녹음 정지',
-                          style: TextStyle(fontSize: 12, color: AppColors.gray400)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
                 GestureDetector(
                   onTap: onStop,
                   child: Container(
@@ -200,9 +183,6 @@ class HomeRecording extends StatelessWidget {
                   ),
                   child: const Icon(Icons.mic, size: 52, color: AppColors.violet600),
                 ),
-                const SizedBox(height: 12),
-                const Text('홈으로 이동',
-                    style: TextStyle(fontSize: 12, color: AppColors.gray400)),
               ],
             ),
           ),
