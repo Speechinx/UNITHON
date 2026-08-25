@@ -296,9 +296,15 @@ class PostureAnalyzer:
                 torso_leans,
                 self.TORSO_LEAN_MILD_DEG,
             )
+            torso_lean_level = self._classify(
+                torso_lean_avg,
+                self.TORSO_LEAN_MILD_DEG,
+                self.TORSO_LEAN_SEVERE_DEG,
+            )
         else:
             torso_lean_avg = 0.0
             torso_lean_exceed_ratio = 0.0
+            torso_lean_level = "unknown"
 
         arm_frames = [
             frame
@@ -425,9 +431,10 @@ class PostureAnalyzer:
             torso_signal_sufficient
             and torso_lean_exceed_ratio >= self.REASON_EXCEED_RATIO_THRESHOLD
         ):
-            reasons.append(
-                f"상체 기울어짐 {torso_lean_exceed_ratio * 100:.0f}% 구간"
-            )
+            if torso_lean_level == "severe":
+                reasons.append("상체가 많이 기울어져 있었어요")
+            elif torso_lean_level == "mild":
+                reasons.append("상체가 살짝 기울어져 있었어요")
 
         if (
             gaze_signal_sufficient
@@ -476,6 +483,7 @@ class PostureAnalyzer:
             "torso_signal_sufficient": torso_signal_sufficient,
             "torso_lean_avg_deg": round(torso_lean_avg, 2),
             "torso_lean_exceed_ratio": round(torso_lean_exceed_ratio, 2),
+            "torso_lean_level": torso_lean_level,
             "arm_openness_level": arm_openness,
             "gaze_signal_sufficient": gaze_signal_sufficient,
             "gaze_away_avg_deg": round(gaze_away_avg, 2),

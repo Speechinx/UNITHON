@@ -423,6 +423,57 @@ def test_analyze_window_flags_torso_lean_reason_when_exceed_ratio_high():
     )
 
 
+def test_analyze_window_torso_lean_level_mild_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    leaned_frame = _frame(
+        left_shoulder=(0.52, 0.3),
+        right_shoulder=(0.52, 0.3),
+        left_hip=(0.4, 0.7),
+        right_hip=(0.4, 0.7),
+    )
+
+    frames = [leaned_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_lean_level"] == "mild"
+    assert "상체가 살짝 기울어져 있었어요" in result["reasons"]
+
+
+def test_analyze_window_torso_lean_level_severe_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    leaned_frame = _frame(
+        left_shoulder=(0.55, 0.486),
+        right_shoulder=(0.55, 0.486),
+        left_hip=(0.4, 0.7),
+        right_hip=(0.4, 0.7),
+    )
+
+    frames = [leaned_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_lean_level"] == "severe"
+    assert "상체가 많이 기울어져 있었어요" in result["reasons"]
+
+
+def test_analyze_window_torso_lean_level_unknown_when_insufficient():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_hip"]["visibility"] = 0.1
+    frame["right_hip"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_signal_sufficient"] is False
+    assert result["torso_lean_level"] == "unknown"
+
+
 def test_analyze_window_result_is_compatible_with_posture_window_schema():
     from app.schemas.analysis_response import PostureWindow
 
