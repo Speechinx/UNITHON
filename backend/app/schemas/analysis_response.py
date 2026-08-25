@@ -115,6 +115,10 @@ class PostureWindow(
 
     arm_openness_level: str = "unknown"
 
+    gaze_signal_sufficient: bool = False
+    gaze_away_avg_deg: float = 0.0
+    gaze_away_exceed_ratio: float = 0.0
+
     reasons: List[
         str
     ] = []

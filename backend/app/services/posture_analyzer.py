@@ -39,6 +39,13 @@ class PostureAnalyzer:
     ARM_OPENNESS_LOW_THRESHOLD = 0.8
     ARM_OPENNESS_HIGH_THRESHOLD = 1.3
 
+    GAZE_AWAY_THRESHOLD_DEG = 20.0
+
+    GAZE_LANDMARKS = [
+        "left_ear",
+        "right_ear",
+    ]
+
     def _is_valid(
         self,
         frame: dict | None,
@@ -161,6 +168,32 @@ class PostureAnalyzer:
             )
         )
 
+    def _gaze_away_deg(
+        self,
+        frame: dict,
+    ) -> float:
+
+        left_ear = frame["left_ear"]
+        right_ear = frame["right_ear"]
+        nose = frame["nose"]
+
+        ear_mid_x = (left_ear["x"] + right_ear["x"]) / 2
+        ear_half_distance = abs(right_ear["x"] - left_ear["x"]) / 2
+
+        if ear_half_distance == 0:
+            return 0.0
+
+        dx = nose["x"] - ear_mid_x
+
+        return abs(
+            math.degrees(
+                math.atan2(
+                    abs(dx),
+                    ear_half_distance,
+                )
+            )
+        )
+
     def analyze_window(
         self,
         frames: list[dict | None],
@@ -264,6 +297,37 @@ class PostureAnalyzer:
         else:
             arm_openness = "unknown"
 
+        gaze_frames = [
+            frame
+            for frame in valid_frames
+            if self._has_signal(frame, self.GAZE_LANDMARKS)
+        ]
+
+        gaze_ratio = (
+            len(gaze_frames) / len(valid_frames)
+            if valid_frames
+            else 0.0
+        )
+
+        gaze_signal_sufficient = (
+            gaze_ratio >= self.MIN_VALID_FRAME_RATIO
+        )
+
+        if gaze_signal_sufficient:
+            gaze_away_degs = [
+                self._gaze_away_deg(frame)
+                for frame in gaze_frames
+            ]
+
+            gaze_away_avg = statistics.mean(gaze_away_degs)
+            gaze_away_exceed_ratio = self._exceed_ratio(
+                gaze_away_degs,
+                self.GAZE_AWAY_THRESHOLD_DEG,
+            )
+        else:
+            gaze_away_avg = 0.0
+            gaze_away_exceed_ratio = 0.0
+
         shoulder_tilt_avg = statistics.mean(shoulder_tilts)
         shoulder_tilt_exceed_ratio = self._exceed_ratio(
             shoulder_tilts,
@@ -314,6 +378,14 @@ class PostureAnalyzer:
                 f"상체 기울어짐 {torso_lean_exceed_ratio * 100:.0f}% 구간"
             )
 
+        if (
+            gaze_signal_sufficient
+            and gaze_away_exceed_ratio >= self.REASON_EXCEED_RATIO_THRESHOLD
+        ):
+            reasons.append(
+                f"시선 이탈 {gaze_away_exceed_ratio * 100:.0f}% 구간"
+            )
+
         return {
             "signal_sufficient": True,
             "valid_frame_ratio": round(valid_ratio, 2),
@@ -327,6 +399,9 @@ class PostureAnalyzer:
             "torso_lean_avg_deg": round(torso_lean_avg, 2),
             "torso_lean_exceed_ratio": round(torso_lean_exceed_ratio, 2),
             "arm_openness_level": arm_openness,
+            "gaze_signal_sufficient": gaze_signal_sufficient,
+            "gaze_away_avg_deg": round(gaze_away_avg, 2),
+            "gaze_away_exceed_ratio": round(gaze_away_exceed_ratio, 2),
             "reasons": reasons,
         }
 

@@ -11,6 +11,8 @@ def _landmark(x, y, visibility=1.0):
 
 def _frame(
     nose=(0.5, 0.2),
+    left_ear=(0.42, 0.2),
+    right_ear=(0.58, 0.2),
     left_shoulder=(0.4, 0.4),
     right_shoulder=(0.6, 0.4),
     left_wrist=(0.35, 0.6),
@@ -23,6 +25,8 @@ def _frame(
 ):
     return {
         "nose": _landmark(*nose, visibility),
+        "left_ear": _landmark(*left_ear, visibility),
+        "right_ear": _landmark(*right_ear, visibility),
         "left_shoulder": _landmark(*left_shoulder, visibility),
         "right_shoulder": _landmark(*right_shoulder, visibility),
         "left_wrist": _landmark(*left_wrist, visibility),
@@ -270,6 +274,34 @@ def test_torso_lean_deg_for_45_degree_lean():
     )
 
 
+def test_gaze_away_deg_is_zero_when_nose_centered_between_ears():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        nose=(0.5, 0.2),
+        left_ear=(0.42, 0.2),
+        right_ear=(0.58, 0.2),
+    )
+
+    assert analyzer._gaze_away_deg(frame) == 0.0
+
+
+def test_gaze_away_deg_for_45_degree_turn():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        nose=(0.58, 0.2),
+        left_ear=(0.42, 0.2),
+        right_ear=(0.58, 0.2),
+    )
+
+    assert math.isclose(
+        analyzer._gaze_away_deg(frame),
+        45.0,
+        abs_tol=0.01,
+    )
+
+
 def test_analyze_window_all_level_frames_reports_torso_lean_too():
     analyzer = PostureAnalyzer()
 
@@ -333,6 +365,7 @@ def test_analyze_window_result_is_compatible_with_posture_window_schema():
     window = PostureWindow(**result)
 
     assert window.torso_signal_sufficient is True
+    assert window.gaze_signal_sufficient is True
 
 
 def test_arm_openness_ratio_greater_than_one_when_elbows_wider_than_shoulders():
@@ -405,3 +438,52 @@ def test_analyze_window_arm_openness_unknown_when_elbows_low_visibility():
 
     assert result["signal_sufficient"] is True
     assert result["arm_openness_level"] == "unknown"
+
+
+def test_analyze_window_all_level_frames_reports_gaze_away_too():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["gaze_signal_sufficient"] is True
+    assert result["gaze_away_avg_deg"] == 0.0
+    assert result["gaze_away_exceed_ratio"] == 0.0
+
+
+def test_analyze_window_gaze_insufficient_when_ears_low_visibility():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_ear"]["visibility"] = 0.1
+    frame["right_ear"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["signal_sufficient"] is True
+    assert result["gaze_signal_sufficient"] is False
+    assert result["gaze_away_avg_deg"] == 0.0
+    assert result["gaze_away_exceed_ratio"] == 0.0
+
+
+def test_analyze_window_flags_gaze_away_reason_when_exceed_ratio_high():
+    analyzer = PostureAnalyzer()
+
+    turned_frame = _frame(
+        nose=(0.58, 0.2),
+        left_ear=(0.42, 0.2),
+        right_ear=(0.58, 0.2),
+    )
+
+    frames = [turned_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["gaze_away_exceed_ratio"] == 0.8
+    assert any(
+        "시선" in reason
+        for reason in result["reasons"]
+    )
