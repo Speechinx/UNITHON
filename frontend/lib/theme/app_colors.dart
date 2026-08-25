@@ -24,6 +24,7 @@ class AppColors {
   static const gray700 = Color(0xFF374151);
   static const gray800 = Color(0xFF1F2937);
   static const gray900 = Color(0xFF111827);
+  static const shadowBlack = Color(0x0D000000);
 
   // Amber
   static const amber50 = Color(0xFFFFFBEB);
