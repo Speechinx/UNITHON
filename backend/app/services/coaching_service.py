@@ -436,7 +436,7 @@ presentation_rate가 낮고 pace_level이 slow라면
 [자세]
 
 28-1. posture_signals는 카메라 프레임에서 측정한 신체 자세 신호
-    (어깨 기울기, 고개 숙임, 좌우 흔들림, 손 제스처 활동성, 상체 기울기, 팔 벌어짐)일 뿐이다.
+    (어깨 기울기, 고개 숙임, 좌우 흔들림, 손 제스처 활동성, 상체 기울기, 팔 벌어짐, 시선(고개 회전) 이탈)일 뿐이다.
 
 28-2. posture_signals의 신호로 발표자의 자신감, 긴장 정도,
     실제 심리 상태를 단정하지 마라.
@@ -460,6 +460,14 @@ presentation_rate가 낮고 pace_level이 slow라면
 28-8. arm_openness_level은 좋고 나쁨을 판단하는 지표가 아니라
     팔이 벌어진 정도(닫힘/보통/열림)일 뿐이다.
     "closed"라고 해서 무조건 소극적이라고 말하지 마라.
+
+28-9. gaze_away_exceed_ratio가 낮거나 gaze_signal_sufficient가 false이면
+    시선 이탈을 언급하지 않아도 된다.
+
+28-10. avatar_state는 녹음 화면의 아바타 이모지를 그리기 위한
+    UI 표시용 힌트일 뿐이다.
+    avatar_state의 "good"/"bad"/"unknown" 값을 인용하거나
+    코칭 근거로 삼지 마라. reasons와 수치 신호만 근거로 삼아라.
 
 
 [잘한 점]

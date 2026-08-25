@@ -315,6 +315,10 @@ Future<void> stopRecording() async {
 
     await _stopPostureCapture();
 
+    setState(() {
+      _avatarState = 'idle';
+    });
+
     final path = await _audioRecorder.stop();
 
     if (!mounted) {
@@ -717,15 +721,17 @@ String formatRecordingTime(
                     ),
                   ),
 
-                  const SizedBox(
-                    height: 20,
-                  ),
-
-                  Center(
-                    child: AvatarWidget(
-                      state: _avatarState,
+                  if (isRecording) ...[
+                    const SizedBox(
+                      height: 20,
                     ),
-                  ),
+
+                    Center(
+                      child: AvatarWidget(
+                        state: _avatarState,
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(
                     height: 28,
