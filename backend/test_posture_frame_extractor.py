@@ -41,9 +41,10 @@ def test_extract_raises_on_garbage_bytes(extractor):
 
 
 class _FakeLandmark:
-    def __init__(self, x, y, visibility):
+    def __init__(self, x, y, z, visibility):
         self.x = x
         self.y = y
+        self.z = z
         self.visibility = visibility
 
 
@@ -65,6 +66,7 @@ def test_extract_maps_landmark_indices_correctly(monkeypatch, extractor):
         _FakeLandmark(
             x=index / 100,
             y=index / 100,
+            z=index / 1000,
             visibility=index / 100,
         )
         for index in range(33)
@@ -79,15 +81,15 @@ def test_extract_maps_landmark_indices_correctly(monkeypatch, extractor):
     result = extractor.extract(encoded.tobytes())
 
     assert result == {
-        "nose": {"x": 0.0, "y": 0.0, "visibility": 0.0},
-        "left_ear": {"x": 0.07, "y": 0.07, "visibility": 0.07},
-        "right_ear": {"x": 0.08, "y": 0.08, "visibility": 0.08},
-        "left_shoulder": {"x": 0.11, "y": 0.11, "visibility": 0.11},
-        "right_shoulder": {"x": 0.12, "y": 0.12, "visibility": 0.12},
-        "left_elbow": {"x": 0.13, "y": 0.13, "visibility": 0.13},
-        "right_elbow": {"x": 0.14, "y": 0.14, "visibility": 0.14},
-        "left_wrist": {"x": 0.15, "y": 0.15, "visibility": 0.15},
-        "right_wrist": {"x": 0.16, "y": 0.16, "visibility": 0.16},
-        "left_hip": {"x": 0.23, "y": 0.23, "visibility": 0.23},
-        "right_hip": {"x": 0.24, "y": 0.24, "visibility": 0.24},
+        "nose": {"x": 0.0, "y": 0.0, "z": 0.0, "visibility": 0.0},
+        "left_ear": {"x": 0.07, "y": 0.07, "z": 0.007, "visibility": 0.07},
+        "right_ear": {"x": 0.08, "y": 0.08, "z": 0.008, "visibility": 0.08},
+        "left_shoulder": {"x": 0.11, "y": 0.11, "z": 0.011, "visibility": 0.11},
+        "right_shoulder": {"x": 0.12, "y": 0.12, "z": 0.012, "visibility": 0.12},
+        "left_elbow": {"x": 0.13, "y": 0.13, "z": 0.013, "visibility": 0.13},
+        "right_elbow": {"x": 0.14, "y": 0.14, "z": 0.014, "visibility": 0.14},
+        "left_wrist": {"x": 0.15, "y": 0.15, "z": 0.015, "visibility": 0.15},
+        "right_wrist": {"x": 0.16, "y": 0.16, "z": 0.016, "visibility": 0.16},
+        "left_hip": {"x": 0.23, "y": 0.23, "z": 0.023, "visibility": 0.23},
+        "right_hip": {"x": 0.24, "y": 0.24, "z": 0.024, "visibility": 0.24},
     }

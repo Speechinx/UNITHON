@@ -62,6 +62,7 @@ class PostureFrameExtractor:
             name: {
                 "x": landmarks[index].x,
                 "y": landmarks[index].y,
+                "z": landmarks[index].z,
                 "visibility": landmarks[index].visibility,
             }
             for name, index in LANDMARK_INDICES.items()
