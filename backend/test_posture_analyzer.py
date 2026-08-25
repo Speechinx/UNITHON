@@ -1009,3 +1009,84 @@ def test_analyze_window_power_zone_unknown_when_hips_low_visibility():
     result = analyzer.analyze_window(frames)
 
     assert result["power_zone_level"] == "unknown"
+
+
+def test_forward_head_z_offset_zero_when_ears_level_with_shoulders():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(z={"left_ear": 0.0, "right_ear": 0.0, "left_shoulder": 0.0, "right_shoulder": 0.0})
+
+    assert analyzer._forward_head_z_offset(frame) == 0.0
+
+
+def test_forward_head_z_offset_positive_when_ears_closer_than_shoulders():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(z={"left_ear": -0.08, "right_ear": -0.08, "left_shoulder": 0.0, "right_shoulder": 0.0})
+
+    assert math.isclose(analyzer._forward_head_z_offset(frame), 0.08, abs_tol=1e-9)
+
+
+def test_analyze_window_head_alignment_stable_for_level_frames():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["head_alignment_level"] == "stable"
+
+
+def test_analyze_window_head_alignment_mild_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    forward_head_frame = _frame(
+        z={
+            "left_ear": -0.06,
+            "right_ear": -0.06,
+            "left_shoulder": 0.0,
+            "right_shoulder": 0.0,
+        }
+    )
+
+    frames = [forward_head_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["head_alignment_level"] == "mild"
+    assert "고개가 어깨보다 살짝 앞으로 나와 있었어요" in result["reasons"]
+
+
+def test_analyze_window_head_alignment_severe_produces_plain_reason():
+    analyzer = PostureAnalyzer()
+
+    forward_head_frame = _frame(
+        z={
+            "left_ear": -0.12,
+            "right_ear": -0.12,
+            "left_shoulder": 0.0,
+            "right_shoulder": 0.0,
+        }
+    )
+
+    frames = [forward_head_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["head_alignment_level"] == "severe"
+    assert "고개가 어깨보다 많이 앞으로 나와 있었어요" in result["reasons"]
+
+
+def test_analyze_window_head_alignment_unknown_when_ears_low_visibility():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_ear"]["visibility"] = 0.1
+    frame["right_ear"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["gaze_signal_sufficient"] is False
+    assert result["head_alignment_level"] == "unknown"

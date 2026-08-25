@@ -60,6 +60,9 @@ class PostureAnalyzer:
     POWER_ZONE_LOW_MAX = 0.3
     POWER_ZONE_HIGH_MIN = 0.6
 
+    HEAD_ALIGNMENT_MILD_Z = 0.03
+    HEAD_ALIGNMENT_SEVERE_Z = 0.07
+
     def _is_valid(
         self,
         frame: dict | None,
@@ -261,6 +264,19 @@ class PostureAnalyzer:
             )
         )
 
+    def _forward_head_z_offset(
+        self,
+        frame: dict,
+    ) -> float:
+
+        ear_center_z = (
+            frame["left_ear"]["z"] + frame["right_ear"]["z"]
+        ) / 2
+
+        shoulder_center_z = self._shoulder_center_z(frame)
+
+        return shoulder_center_z - ear_center_z
+
     def analyze_window(
         self,
         frames: list[dict | None],
@@ -453,10 +469,30 @@ class PostureAnalyzer:
                 self.GAZE_AWAY_MILD_DEG,
                 self.GAZE_AWAY_SEVERE_DEG,
             )
+
+            head_alignment_offsets = [
+                self._forward_head_z_offset(frame)
+                for frame in gaze_frames
+            ]
+
+            head_alignment_avg = statistics.mean(head_alignment_offsets)
+            head_alignment_exceed_ratio = self._exceed_ratio(
+                head_alignment_offsets,
+                self.HEAD_ALIGNMENT_MILD_Z,
+            )
+            head_alignment_level = self._classify(
+                head_alignment_avg,
+                self.HEAD_ALIGNMENT_MILD_Z,
+                self.HEAD_ALIGNMENT_SEVERE_Z,
+            )
         else:
             gaze_away_avg = 0.0
             gaze_away_exceed_ratio = 0.0
             gaze_away_level = "unknown"
+
+            head_alignment_avg = 0.0
+            head_alignment_exceed_ratio = 0.0
+            head_alignment_level = "unknown"
 
         shoulder_tilt_avg = statistics.mean(shoulder_tilts)
         shoulder_tilt_exceed_ratio = self._exceed_ratio(
@@ -539,6 +575,15 @@ class PostureAnalyzer:
             elif gaze_away_level == "mild":
                 reasons.append("시선이 자주 옆으로 벗어났어요")
 
+        if (
+            gaze_signal_sufficient
+            and head_alignment_exceed_ratio >= self.REASON_EXCEED_RATIO_THRESHOLD
+        ):
+            if head_alignment_level == "severe":
+                reasons.append("고개가 어깨보다 많이 앞으로 나와 있었어요")
+            elif head_alignment_level == "mild":
+                reasons.append("고개가 어깨보다 살짝 앞으로 나와 있었어요")
+
         if sway_level == "severe":
             reasons.append("몸이 자주 좌우로 흔들렸어요")
         elif sway_level == "mild":
@@ -584,6 +629,7 @@ class PostureAnalyzer:
             "gaze_away_avg_deg": round(gaze_away_avg, 2),
             "gaze_away_exceed_ratio": round(gaze_away_exceed_ratio, 2),
             "gaze_away_level": gaze_away_level,
+            "head_alignment_level": head_alignment_level,
             "power_zone_level": power_zone_level,
             "reasons": reasons,
             "avatar_state": avatar_state,
