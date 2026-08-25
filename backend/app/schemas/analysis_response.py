@@ -109,6 +109,10 @@ class PostureWindow(
 
     gesture_activity_level: str = "unknown"
 
+    torso_signal_sufficient: bool = False
+    torso_lean_avg_deg: float = 0.0
+    torso_lean_exceed_ratio: float = 0.0
+
     reasons: List[
         str
     ] = []

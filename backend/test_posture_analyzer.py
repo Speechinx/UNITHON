@@ -15,6 +15,8 @@ def _frame(
     right_shoulder=(0.6, 0.4),
     left_wrist=(0.35, 0.6),
     right_wrist=(0.65, 0.6),
+    left_hip=(0.45, 0.75),
+    right_hip=(0.55, 0.75),
     visibility=1.0,
 ):
     return {
@@ -23,6 +25,8 @@ def _frame(
         "right_shoulder": _landmark(*right_shoulder, visibility),
         "left_wrist": _landmark(*left_wrist, visibility),
         "right_wrist": _landmark(*right_wrist, visibility),
+        "left_hip": _landmark(*left_hip, visibility),
+        "right_hip": _landmark(*right_hip, visibility),
     }
 
 
@@ -230,3 +234,98 @@ def test_analyze_window_detects_high_gesture_activity_from_moving_wrists():
     result = analyzer.analyze_window(frames)
 
     assert result["gesture_activity_level"] == "high"
+
+
+def test_torso_lean_deg_is_zero_when_shoulder_center_is_above_hip_center():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        left_shoulder=(0.4, 0.3),
+        right_shoulder=(0.6, 0.3),
+        left_hip=(0.4, 0.7),
+        right_hip=(0.6, 0.7),
+    )
+
+    assert analyzer._torso_lean_deg(frame) == 0.0
+
+
+def test_torso_lean_deg_for_45_degree_lean():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        left_shoulder=(0.5, 0.3),
+        right_shoulder=(0.5, 0.3),
+        left_hip=(0.7, 0.5),
+        right_hip=(0.7, 0.5),
+    )
+
+    assert math.isclose(
+        analyzer._torso_lean_deg(frame),
+        45.0,
+        abs_tol=0.01,
+    )
+
+
+def test_analyze_window_all_level_frames_reports_torso_lean_too():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_signal_sufficient"] is True
+    assert result["torso_lean_avg_deg"] == 0.0
+    assert result["torso_lean_exceed_ratio"] == 0.0
+
+
+def test_analyze_window_torso_insufficient_when_hips_low_visibility():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_hip"]["visibility"] = 0.1
+    frame["right_hip"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["signal_sufficient"] is True
+    assert result["torso_signal_sufficient"] is False
+    assert result["torso_lean_avg_deg"] == 0.0
+    assert result["torso_lean_exceed_ratio"] == 0.0
+
+
+def test_analyze_window_flags_torso_lean_reason_when_exceed_ratio_high():
+    analyzer = PostureAnalyzer()
+
+    leaned_frame = _frame(
+        left_shoulder=(0.55, 0.3),
+        right_shoulder=(0.55, 0.3),
+        left_hip=(0.4, 0.7),
+        right_hip=(0.4, 0.7),
+    )
+
+    frames = [leaned_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["torso_lean_exceed_ratio"] == 0.8
+    assert any(
+        "상체" in reason
+        for reason in result["reasons"]
+    )
+
+
+def test_analyze_window_result_is_compatible_with_posture_window_schema():
+    from app.schemas.analysis_response import PostureWindow
+
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+    result["window_index"] = 0
+
+    window = PostureWindow(**result)
+
+    assert window.torso_signal_sufficient is True

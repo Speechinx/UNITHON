@@ -8,6 +8,7 @@ class PostureAnalyzer:
 
     SHOULDER_TILT_THRESHOLD_DEG = 8.0
     HEAD_DOWN_THRESHOLD_DEG = 60.0
+    TORSO_LEAN_THRESHOLD_DEG = 10.0
 
     REASON_EXCEED_RATIO_THRESHOLD = 0.3
 
@@ -25,6 +26,11 @@ class PostureAnalyzer:
         "right_wrist",
     ]
 
+    TORSO_LANDMARKS = [
+        "left_hip",
+        "right_hip",
+    ]
+
     def _is_valid(
         self,
         frame: dict | None,
@@ -39,15 +45,16 @@ class PostureAnalyzer:
             for key in self.REQUIRED_LANDMARKS
         )
 
-    def _has_gesture_signal(
+    def _has_signal(
         self,
         frame: dict,
+        landmark_names: list[str],
     ) -> bool:
 
         return all(
             key in frame
             and frame[key]["visibility"] >= self.MIN_VISIBILITY
-            for key in self.GESTURE_LANDMARKS
+            for key in landmark_names
         )
 
     def _shoulder_tilt_deg(
@@ -100,6 +107,52 @@ class PostureAnalyzer:
             )
         )
 
+    def _shoulder_center(
+        self,
+        frame: dict,
+    ) -> tuple[float, float]:
+
+        left = frame["left_shoulder"]
+        right = frame["right_shoulder"]
+
+        return (
+            (left["x"] + right["x"]) / 2,
+            (left["y"] + right["y"]) / 2,
+        )
+
+    def _hip_center(
+        self,
+        frame: dict,
+    ) -> tuple[float, float]:
+
+        left = frame["left_hip"]
+        right = frame["right_hip"]
+
+        return (
+            (left["x"] + right["x"]) / 2,
+            (left["y"] + right["y"]) / 2,
+        )
+
+    def _torso_lean_deg(
+        self,
+        frame: dict,
+    ) -> float:
+
+        shoulder_x, shoulder_y = self._shoulder_center(frame)
+        hip_x, hip_y = self._hip_center(frame)
+
+        dx = shoulder_x - hip_x
+        dy = shoulder_y - hip_y
+
+        return abs(
+            math.degrees(
+                math.atan2(
+                    abs(dx),
+                    abs(dy),
+                )
+            )
+        )
+
     def analyze_window(
         self,
         frames: list[dict | None],
@@ -141,7 +194,7 @@ class PostureAnalyzer:
         gesture_frames = [
             frame
             for frame in valid_frames
-            if self._has_gesture_signal(frame)
+            if self._has_signal(frame, self.GESTURE_LANDMARKS)
         ]
 
         gesture_ratio = (
@@ -149,6 +202,37 @@ class PostureAnalyzer:
             if valid_frames
             else 0.0
         )
+
+        torso_frames = [
+            frame
+            for frame in valid_frames
+            if self._has_signal(frame, self.TORSO_LANDMARKS)
+        ]
+
+        torso_ratio = (
+            len(torso_frames) / len(valid_frames)
+            if valid_frames
+            else 0.0
+        )
+
+        torso_signal_sufficient = (
+            torso_ratio >= self.MIN_VALID_FRAME_RATIO
+        )
+
+        if torso_signal_sufficient:
+            torso_leans = [
+                self._torso_lean_deg(frame)
+                for frame in torso_frames
+            ]
+
+            torso_lean_avg = statistics.mean(torso_leans)
+            torso_lean_exceed_ratio = self._exceed_ratio(
+                torso_leans,
+                self.TORSO_LEAN_THRESHOLD_DEG,
+            )
+        else:
+            torso_lean_avg = 0.0
+            torso_lean_exceed_ratio = 0.0
 
         shoulder_tilt_avg = statistics.mean(shoulder_tilts)
         shoulder_tilt_exceed_ratio = self._exceed_ratio(
@@ -192,6 +276,14 @@ class PostureAnalyzer:
                 f"고개 숙임 {head_down_exceed_ratio * 100:.0f}% 구간"
             )
 
+        if (
+            torso_signal_sufficient
+            and torso_lean_exceed_ratio >= self.REASON_EXCEED_RATIO_THRESHOLD
+        ):
+            reasons.append(
+                f"상체 기울어짐 {torso_lean_exceed_ratio * 100:.0f}% 구간"
+            )
+
         return {
             "signal_sufficient": True,
             "valid_frame_ratio": round(valid_ratio, 2),
@@ -201,6 +293,9 @@ class PostureAnalyzer:
             "head_down_exceed_ratio": round(head_down_exceed_ratio, 2),
             "sway_std": round(sway_std, 4),
             "gesture_activity_level": gesture_activity,
+            "torso_signal_sufficient": torso_signal_sufficient,
+            "torso_lean_avg_deg": round(torso_lean_avg, 2),
+            "torso_lean_exceed_ratio": round(torso_lean_exceed_ratio, 2),
             "reasons": reasons,
         }
 
