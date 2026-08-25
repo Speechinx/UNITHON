@@ -7,15 +7,21 @@ import '../theme/app_colors.dart';
 /// 백엔드 `/analyze` 응답(Map)을 화면 위젯이 바로 쓸 수 있는 모델로 변환하는
 /// 순수 함수 모음.
 
-SegmentLevel levelFromApi(String? level) {
-  switch (level) {
-    case 'high':
-      return SegmentLevel.danger;
-    case 'medium':
-      return SegmentLevel.caution;
-    default:
-      return SegmentLevel.stable;
+/// 백엔드가 내려주는 `score`는 감점이 누적되는 "위험 점수"(0=완벽, 100=최악)다.
+/// 화면에는 "발표 점수"(높을수록 좋음)로 뒤집어 보여준다.
+int presentationScoreFromRisk(num riskScore) {
+  return (100 - riskScore).clamp(0, 100).round();
+}
+
+/// 발표 점수(0~100, 높을수록 좋음) 기준: 70점 이상 안정, 50~69점 주의, 그 미만 위험.
+SegmentLevel levelFromScore(int presentationScore) {
+  if (presentationScore >= 70) {
+    return SegmentLevel.stable;
   }
+  if (presentationScore >= 50) {
+    return SegmentLevel.caution;
+  }
+  return SegmentLevel.danger;
 }
 
 String paceText(String? level) {
@@ -154,10 +160,13 @@ List<Map<String, dynamic>> _asMapList(dynamic value) {
 ) {
   final coaching = _asMap(result['coaching']);
   final risk = _asMap(result['risk']);
+  final presentationScore = presentationScoreFromRisk(
+    asDouble(risk['overall_score']),
+  );
 
   return (
     summary: coaching['summary']?.toString() ?? '',
-    level: levelFromApi(risk['overall_level']?.toString()),
+    level: levelFromScore(presentationScore),
   );
 }
 
@@ -216,17 +225,6 @@ List<MetricData> buildMetrics(Map<String, dynamic> result) {
   ];
 }
 
-String _scoreLabel(SegmentLevel level) {
-  switch (level) {
-    case SegmentLevel.stable:
-      return '안정도';
-    case SegmentLevel.caution:
-      return '주의도';
-    case SegmentLevel.danger:
-      return '위험도';
-  }
-}
-
 Color _scoreColor(SegmentLevel level) {
   switch (level) {
     case SegmentLevel.stable:
@@ -264,7 +262,10 @@ List<Segment> buildSegments(Map<String, dynamic> result) {
 
     final start = asDouble(window['start']);
     final end = asDouble(window['end']);
-    final level = levelFromApi(window['level']?.toString());
+    final presentationScore = presentationScoreFromRisk(
+      asDouble(window['score']),
+    );
+    final level = levelFromScore(presentationScore);
     final duration = (end - start).clamp(0.1, double.infinity);
 
     final reasons = List<String>.from(window['reasons'] ?? []);
@@ -274,8 +275,8 @@ List<Segment> buildSegments(Map<String, dynamic> result) {
       level: level,
       time: '${formatTime(start)} ~ ${formatTime(end)}',
       flex: (duration * 10).round().clamp(1, 999),
-      scoreLabel: _scoreLabel(level),
-      score: '${window['score'] ?? 0}점',
+      scoreLabel: '발표 점수',
+      score: '$presentationScore점',
       scoreColor: _scoreColor(level),
       speed: paceText(window['pace_level']?.toString()),
       tone: emotionText(window['emotion_signal']?.toString()),
@@ -342,7 +343,10 @@ HistoryItem buildHistoryItem(Map<String, dynamic> result, DateTime? savedAt) {
   final duration = asDouble(result['duration']);
   final rate = asDouble(speech['presentation_rate']);
   final pace = paceText(speech['pace_level']?.toString());
-  final level = levelFromApi(risk['overall_level']?.toString());
+  final presentationScore = presentationScoreFromRisk(
+    asDouble(risk['overall_score']),
+  );
+  final level = levelFromScore(presentationScore);
 
   return HistoryItem(
     date: formatHistoryDate(savedAt),

@@ -368,12 +368,12 @@ class _AnalysisDetailState extends State<AnalysisDetail> {
                   )
                 else ...[
                   GridView.count(
-                    crossAxisCount: 3,
+                    crossAxisCount: 2,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
-                    childAspectRatio: 1.5,
+                    childAspectRatio: 1.8,
                     children: [
                       _statTile('어깨 기울기', seg.shoulderTilt, AppColors.gray900),
                       _statTile('고개 숙임', seg.headDown, AppColors.gray900),

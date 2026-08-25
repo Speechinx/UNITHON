@@ -223,31 +223,36 @@ class HomeRecording extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (isReady)
-                    Center(
-                      child: AspectRatio(
-                        aspectRatio: controller.value.aspectRatio,
-                        child: CameraPreview(controller),
-                      ),
-                    )
-                  else
-                    const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.videocam_outlined,
-                              size: 32, color: AppColors.gray400),
-                          SizedBox(height: 8),
-                          Text('카메라를 준비하고 있어요',
-                              style: TextStyle(
-                                  fontSize: 14, color: AppColors.gray500)),
-                        ],
-                      ),
-                    ),
+                  Center(
+                    child: ReactionAvatar(state: avatarState, size: 200),
+                  ),
                   Positioned(
-                    top: 12,
+                    bottom: 12,
                     right: 12,
-                    child: ReactionAvatar(state: avatarState, size: 56),
+                    child: Container(
+                      width: 88,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.white, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.gray800,
+                      ),
+                      child: isReady
+                          ? AspectRatio(
+                              aspectRatio: controller.value.aspectRatio,
+                              child: CameraPreview(controller),
+                            )
+                          : const AspectRatio(
+                              aspectRatio: 3 / 4,
+                              child: Center(
+                                child: Icon(
+                                  Icons.videocam_outlined,
+                                  size: 20,
+                                  color: AppColors.gray400,
+                                ),
+                              ),
+                            ),
+                    ),
                   ),
                 ],
               ),
