@@ -410,3 +410,32 @@ async def analyze_posture_window(
     )
 
     return result
+
+
+@router.post(
+    "/posture/preview",
+)
+async def analyze_posture_preview(
+    frames: list[UploadFile] = File(...),
+):
+    """녹화 중 실시간 반응(아바타 표정)용 짧은 주기 미리보기.
+
+    `/posture/window`와 달리 세션에 저장하지 않는다 — 최종 리포트의
+    자세 신호(15초 단위, 음성 타임라인과 인덱스로 매칭됨)에는 영향을
+    주지 않고, avatar_state만 더 자주 갱신하기 위한 용도다.
+    """
+
+    extractor = get_posture_extractor()
+
+    landmark_frames = []
+
+    for frame in frames:
+        content = await frame.read()
+
+        landmark_frames.append(
+            extractor.extract(content)
+        )
+
+    return posture_analyzer.analyze_window(
+        landmark_frames
+    )

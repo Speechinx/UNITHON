@@ -55,3 +55,40 @@ def test_posture_window_endpoint_returns_signal_sufficient_result(
     assert body["signal_sufficient"] is True
 
     routes_module.posture_store.clear("test-session")
+
+
+def test_posture_preview_endpoint_returns_avatar_state_without_persisting(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        routes_module,
+        "get_posture_extractor",
+        lambda: _FakeExtractor(),
+    )
+
+    files = [
+        (
+            "frames",
+            (
+                f"frame_{i}.jpg",
+                io.BytesIO(b"fake-jpeg-bytes"),
+                "image/jpeg",
+            ),
+        )
+        for i in range(3)
+    ]
+
+    response = client.post(
+        "/posture/preview",
+        files=files,
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["signal_sufficient"] is True
+    assert "avatar_state" in body
+    assert "window_index" not in body
+
+    assert routes_module.posture_store.get_windows("preview") == []

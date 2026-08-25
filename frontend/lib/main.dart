@@ -16,6 +16,7 @@ import 'models/app_models.dart';
 import 'posture/posture_blob_cleanup_stub.dart'
     if (dart.library.html) 'posture/posture_blob_cleanup_web.dart';
 import 'posture/posture_capture_buffer.dart';
+import 'posture/posture_preview_uploader.dart';
 import 'posture/posture_window_uploader.dart';
 import 'screens/analysis_detail.dart';
 import 'screens/analysis_summary.dart';
@@ -116,6 +117,13 @@ class _AppShellState extends State<AppShell> {
   PostureWindowUploader? _postureUploader;
   String _avatarState = 'focused';
 
+  // 15초 단위 공식 window와 별도로, 반응 영상을 더 자주 갱신하기 위한
+  // 짧은 주기 미리보기 버퍼/업로더. 최종 리포트(자세 신호, /analyze 매칭)
+  // 에는 영향을 주지 않는다 — /posture/preview는 서버에 저장되지 않는다.
+  final PostureCaptureBuffer _previewBuffer = PostureCaptureBuffer();
+  Timer? _previewFlushTimer;
+  PosturePreviewUploader? _previewUploader;
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +136,7 @@ class _AppShellState extends State<AppShell> {
     _audioRecorder.dispose();
     _postureCaptureTimer?.cancel();
     _postureFlushTimer?.cancel();
+    _previewFlushTimer?.cancel();
     _cameraController?.dispose();
     super.dispose();
   }
@@ -269,6 +278,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _startPostureCapture() async {
     _postureBuffer.flush();
+    _previewBuffer.flush();
 
     _postureSessionId =
         '${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1000000)}';
@@ -277,6 +287,10 @@ class _AppShellState extends State<AppShell> {
     _postureUploader = PostureWindowUploader(
       baseUrl: 'http://127.0.0.1:8000',
       sessionId: _postureSessionId!,
+    );
+
+    _previewUploader = PosturePreviewUploader(
+      baseUrl: 'http://127.0.0.1:8000',
     );
 
     final cameras = await availableCameras();
@@ -314,6 +328,11 @@ class _AppShellState extends State<AppShell> {
         _lastPostureFlush = _flushPostureWindow();
       },
     );
+
+    _previewFlushTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _flushPreview(),
+    );
   }
 
   Future<void> _capturePostureFrame() async {
@@ -338,6 +357,7 @@ class _AppShellState extends State<AppShell> {
       final resized = _resizeJpeg(bytes);
 
       _postureBuffer.addFrame(resized);
+      _previewBuffer.addFrame(resized);
     } catch (e) {
       debugPrint('자세 프레임 캡처 실패: $e');
     } finally {
@@ -384,9 +404,35 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  Future<void> _flushPreview() async {
+    final frames = _previewBuffer.flush();
+
+    if (frames.isEmpty || _previewUploader == null) {
+      return;
+    }
+
+    try {
+      final result = await _previewUploader!.uploadPreview(
+        frames: frames,
+      );
+
+      final avatarState = result['avatar_state'] as String?;
+
+      if (avatarState != null && mounted) {
+        setState(() {
+          _avatarState = avatarState;
+        });
+      }
+    } catch (e) {
+      debugPrint('자세 미리보기 업로드 실패 (건너뜀): $e');
+    }
+  }
+
   Future<void> _stopPostureCapture() async {
     _postureCaptureTimer?.cancel();
     _postureFlushTimer?.cancel();
+    _previewFlushTimer?.cancel();
+    _previewBuffer.flush();
 
     if (_lastPostureFlush != null) {
       await _lastPostureFlush;
