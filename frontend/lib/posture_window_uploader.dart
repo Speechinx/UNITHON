@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 class PostureWindowUploader {
@@ -11,7 +13,7 @@ class PostureWindowUploader {
   final String sessionId;
   final http.Client _client;
 
-  Future<void> uploadWindow({
+  Future<Map<String, dynamic>> uploadWindow({
     required int windowIndex,
     required List<List<int>> frames,
   }) async {
@@ -43,5 +45,7 @@ class PostureWindowUploader {
         'posture window upload failed: ${response.statusCode}',
       );
     }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }

@@ -54,4 +54,29 @@ void main() {
       throwsException,
     );
   });
+
+  test('uploadWindow returns the parsed JSON response body', () async {
+    final mockClient = MockClient((request) async {
+      return http.Response(
+        '{"avatar_state": "good", "window_index": 3}',
+        200,
+      );
+    });
+
+    final uploader = PostureWindowUploader(
+      baseUrl: 'http://127.0.0.1:8000',
+      sessionId: 'test-session',
+      client: mockClient,
+    );
+
+    final result = await uploader.uploadWindow(
+      windowIndex: 3,
+      frames: [
+        [1, 2, 3],
+      ],
+    );
+
+    expect(result['avatar_state'], 'good');
+    expect(result['window_index'], 3);
+  });
 }
