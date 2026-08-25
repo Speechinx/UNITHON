@@ -454,6 +454,13 @@ presentation_rate가 낮고 pace_level이 slow라면
     활동성 수준(낮음/보통/높음)일 뿐이다.
     "low"라고 해서 무조건 개선이 필요하다고 말하지 마라.
 
+28-7. torso_lean_exceed_ratio가 낮거나 torso_signal_sufficient가 false이면
+    상체 기울기를 언급하지 않아도 된다.
+
+28-8. arm_openness_level은 좋고 나쁨을 판단하는 지표가 아니라
+    팔이 벌어진 정도(닫힘/보통/열림)일 뿐이다.
+    "closed"라고 해서 무조건 소극적이라고 말하지 마라.
+
 
 [잘한 점]
 

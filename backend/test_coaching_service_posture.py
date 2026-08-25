@@ -52,3 +52,5 @@ def test_build_prompt_includes_posture_rules_section():
 
     assert "[자세]" in prompt
     assert "posture_signals" in prompt
+    assert "torso_signal_sufficient" in prompt
+    assert "arm_openness_level" in prompt
