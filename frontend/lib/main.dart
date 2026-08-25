@@ -115,7 +115,7 @@ class _AppShellState extends State<AppShell> {
   int _postureWindowIndex = 0;
   String? _postureSessionId;
   PostureWindowUploader? _postureUploader;
-  String _avatarState = 'focused';
+  String _avatarState = 'engaged';
 
   // 15초 단위 공식 window와 별도로, 반응 영상을 더 자주 갱신하기 위한
   // 짧은 주기 미리보기 버퍼/업로더. 최종 리포트(자세 신호, /analyze 매칭)
@@ -191,8 +191,8 @@ class _AppShellState extends State<AppShell> {
         recordingSeconds = 0;
         homeScreen = HomeScreen.recording;
         // 첫 자세 window 분석이 끝나기 전(약 15초)에도 공백 없이 바로
-        // 반응 영상이 보이도록 기본값을 '집중'으로 시작한다.
-        _avatarState = 'focused';
+        // 반응 영상이 보이도록 기본값을 '공감'으로 시작한다.
+        _avatarState = 'engaged';
       });
 
       _recordingTimer?.cancel();

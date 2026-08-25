@@ -60,8 +60,8 @@ class PostureAnalyzer:
     POWER_ZONE_LOW_MAX = 0.3
     POWER_ZONE_HIGH_MIN = 0.6
 
-    HEAD_ALIGNMENT_MILD_Z = 0.03
-    HEAD_ALIGNMENT_SEVERE_Z = 0.07
+    HEAD_ALIGNMENT_MILD_Z = 0.25
+    HEAD_ALIGNMENT_SEVERE_Z = 0.45
 
     def _is_valid(
         self,

@@ -1051,8 +1051,8 @@ def test_analyze_window_head_alignment_mild_produces_plain_reason():
 
     forward_head_frame = _frame(
         z={
-            "left_ear": -0.06,
-            "right_ear": -0.06,
+            "left_ear": -0.375,
+            "right_ear": -0.375,
             "left_shoulder": 0.0,
             "right_shoulder": 0.0,
         }
@@ -1071,8 +1071,8 @@ def test_analyze_window_head_alignment_severe_produces_plain_reason():
 
     forward_head_frame = _frame(
         z={
-            "left_ear": -0.12,
-            "right_ear": -0.12,
+            "left_ear": -0.625,
+            "right_ear": -0.625,
             "left_shoulder": 0.0,
             "right_shoulder": 0.0,
         }
