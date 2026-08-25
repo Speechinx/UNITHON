@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:pr_front/posture_window_uploader.dart';
+import 'package:pr_front/posture/posture_window_uploader.dart';
 
 void main() {
   test('uploadWindow sends POST to the correct path with query params', () async {

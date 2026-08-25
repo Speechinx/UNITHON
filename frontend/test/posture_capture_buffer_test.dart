@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pr_front/posture_capture_buffer.dart';
+import 'package:pr_front/posture/posture_capture_buffer.dart';
 
 void main() {
   test('addFrame increases frameCount', () {

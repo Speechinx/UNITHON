@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pr_front/posture_timeline.dart';
+import 'package:pr_front/posture/posture_timeline.dart';
 
 void main() {
   test('fromJson parses all fields', () {
