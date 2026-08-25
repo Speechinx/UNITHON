@@ -135,6 +135,26 @@ class CoachingService:
             result
         )
 
+    def _strip_avatar_state(
+        self,
+        posture_signals: dict,
+    ) -> dict:
+
+        if "windows" not in posture_signals:
+            return posture_signals
+
+        return {
+            **posture_signals,
+            "windows": [
+                {
+                    key: value
+                    for key, value in window.items()
+                    if key != "avatar_state"
+                }
+                for window in posture_signals["windows"]
+            ],
+        }
+
     def _build_coaching_data(
         self,
         analysis_result: dict,
@@ -178,9 +198,11 @@ class CoachingService:
             ),
 
             "posture_signals": (
-                analysis_result.get(
-                    "posture",
-                    {},
+                self._strip_avatar_state(
+                    analysis_result.get(
+                        "posture",
+                        {},
+                    )
                 )
             ),
 
@@ -463,11 +485,6 @@ presentation_rate가 낮고 pace_level이 slow라면
 
 28-9. gaze_away_exceed_ratio가 낮거나 gaze_signal_sufficient가 false이면
     시선 이탈을 언급하지 않아도 된다.
-
-28-10. avatar_state는 녹음 화면의 아바타 이모지를 그리기 위한
-    UI 표시용 힌트일 뿐이다.
-    avatar_state의 "focused"/"engaged"/"confused"/"bored"/"unknown" 값을
-    인용하거나 코칭 근거로 삼지 마라. reasons와 수치 신호만 근거로 삼아라.
 
 
 [잘한 점]

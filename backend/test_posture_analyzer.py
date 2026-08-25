@@ -512,6 +512,23 @@ def test_analyze_window_arm_openness_unknown_when_elbows_low_visibility():
     assert result["arm_openness_level"] == "unknown"
 
 
+def test_analyze_window_avatar_state_engaged_when_arm_openness_unknown():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_elbow"]["visibility"] = 0.1
+    frame["right_elbow"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["reasons"] == []
+    assert result["gesture_activity_level"] == "low"
+    assert result["arm_openness_level"] == "unknown"
+    assert result["avatar_state"] == "engaged"
+
+
 def test_analyze_window_all_level_frames_reports_gaze_away_too():
     analyzer = PostureAnalyzer()
 

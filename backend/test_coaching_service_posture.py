@@ -41,6 +41,31 @@ def test_build_coaching_data_defaults_posture_signals_when_missing():
     assert data["posture_signals"] == {}
 
 
+def test_build_coaching_data_strips_avatar_state_from_posture_signals():
+    service = _service()
+
+    analysis_result = {
+        "transcript": "hello",
+        "posture": {
+            "windows": [
+                {
+                    "window_index": 0,
+                    "avatar_state": "bored",
+                    "reasons": ["어깨 기울어짐 80% 구간"],
+                }
+            ]
+        },
+    }
+
+    data = service._build_coaching_data(analysis_result)
+
+    window = data["posture_signals"]["windows"][0]
+
+    assert "avatar_state" not in window
+    assert window["window_index"] == 0
+    assert window["reasons"] == ["어깨 기울어짐 80% 구간"]
+
+
 def test_build_prompt_includes_posture_rules_section():
     service = _service()
 
