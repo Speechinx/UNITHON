@@ -10,15 +10,13 @@ class AvatarWidget extends StatelessWidget {
 
   static const Map<String, String> _emojiByState = {
     'idle': '💤',
-    'good': '🙂',
-    'bad': '😟',
+    'bored': '😴',
     'unknown': '❔',
   };
 
   static const Map<String, Color> _colorByState = {
     'idle': Colors.grey,
-    'good': Colors.green,
-    'bad': Colors.red,
+    'bored': Colors.orange,
     'unknown': Colors.grey,
   };
 
@@ -38,7 +36,7 @@ class AvatarWidget extends StatelessWidget {
         height: 96,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           border: Border.all(color: color, width: 2),
         ),
         alignment: Alignment.center,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pr_front/avatar_widget.dart';
+import 'package:pr_front/posture/avatar_widget.dart';
 
 void main() {
   testWidgets('shows idle emoji by default', (tester) async {
@@ -11,20 +11,12 @@ void main() {
     expect(find.text('💤'), findsOneWidget);
   });
 
-  testWidgets('shows good emoji for good state', (tester) async {
+  testWidgets('shows bored emoji for bored state', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(home: AvatarWidget(state: 'good')),
+      const MaterialApp(home: AvatarWidget(state: 'bored')),
     );
 
-    expect(find.text('🙂'), findsOneWidget);
-  });
-
-  testWidgets('shows bad emoji for bad state', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: AvatarWidget(state: 'bad')),
-    );
-
-    expect(find.text('😟'), findsOneWidget);
+    expect(find.text('😴'), findsOneWidget);
   });
 
   testWidgets('shows unknown emoji for unknown state', (tester) async {
