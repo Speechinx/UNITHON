@@ -202,6 +202,22 @@ def test_analyze_window_flags_shoulder_tilt_reason_when_exceed_ratio_high():
     )
 
 
+def test_analyze_window_signal_sufficient_when_only_wrists_low_visibility():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_wrist"]["visibility"] = 0.1
+    frame["right_wrist"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["signal_sufficient"] is True
+    assert result["valid_frame_ratio"] == 1.0
+    assert result["gesture_activity_level"] == "unknown"
+
+
 def test_analyze_window_detects_high_gesture_activity_from_moving_wrists():
     analyzer = PostureAnalyzer()
 

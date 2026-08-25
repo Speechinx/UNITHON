@@ -18,6 +18,9 @@ class PostureAnalyzer:
         "nose",
         "left_shoulder",
         "right_shoulder",
+    ]
+
+    GESTURE_LANDMARKS = [
         "left_wrist",
         "right_wrist",
     ]
@@ -34,6 +37,17 @@ class PostureAnalyzer:
             key in frame
             and frame[key]["visibility"] >= self.MIN_VISIBILITY
             for key in self.REQUIRED_LANDMARKS
+        )
+
+    def _has_gesture_signal(
+        self,
+        frame: dict,
+    ) -> bool:
+
+        return all(
+            key in frame
+            and frame[key]["visibility"] >= self.MIN_VISIBILITY
+            for key in self.GESTURE_LANDMARKS
         )
 
     def _shoulder_tilt_deg(
@@ -124,10 +138,17 @@ class PostureAnalyzer:
             for frame in valid_frames
         ]
 
-        wrist_series = [
-            self._wrist_positions(frame)
+        gesture_frames = [
+            frame
             for frame in valid_frames
+            if self._has_gesture_signal(frame)
         ]
+
+        gesture_ratio = (
+            len(gesture_frames) / len(valid_frames)
+            if valid_frames
+            else 0.0
+        )
 
         shoulder_tilt_avg = statistics.mean(shoulder_tilts)
         shoulder_tilt_exceed_ratio = self._exceed_ratio(
@@ -147,9 +168,17 @@ class PostureAnalyzer:
             else 0.0
         )
 
-        gesture_activity = self._gesture_activity_level(
-            wrist_series
-        )
+        if gesture_ratio >= self.MIN_VALID_FRAME_RATIO:
+            wrist_series = [
+                self._wrist_positions(frame)
+                for frame in gesture_frames
+            ]
+
+            gesture_activity = self._gesture_activity_level(
+                wrist_series
+            )
+        else:
+            gesture_activity = "unknown"
 
         reasons = []
 
