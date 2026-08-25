@@ -26,16 +26,16 @@ void main() {
           {
             'window_index': 0,
             'signal_sufficient': true,
-            'shoulder_tilt_avg_deg': 12.5,
-            'shoulder_tilt_exceed_ratio': 0.4,
-            'head_down_avg_deg': 8.0,
-            'head_down_exceed_ratio': 0.1,
+            'shoulder_tilt_level': 'mild',
+            'head_down_level': 'stable',
             'gesture_activity_level': 'normal',
             'torso_signal_sufficient': true,
-            'torso_lean_avg_deg': 5.0,
-            'torso_lean_exceed_ratio': 0.2,
-            'arm_openness_level': 'open',
-            'reasons': ['어깨 기울어짐 40% 구간'],
+            'torso_lean_level': 'stable',
+            'torso_lean_direction': 'forward',
+            'open_posture_level': 'open',
+            'power_zone_level': 'high',
+            'head_alignment_level': 'mild',
+            'reasons': ['어깨가 약간 기울어진 구간이 있었어요'],
           },
         ],
       },
@@ -46,12 +46,15 @@ void main() {
     expect(segments.length, 1);
     expect(segments.first.postureAvailable, true);
     expect(segments.first.postureSignalSufficient, true);
-    expect(segments.first.shoulderTilt, '평균 12.5도 · 초과 40%');
-    expect(segments.first.headDown, '평균 8.0도 · 초과 10%');
-    expect(segments.first.torsoLean, '평균 5.0도 · 초과 20%');
-    expect(segments.first.armOpenness, '열림');
+    expect(segments.first.shoulderTilt, '약간 기울어짐');
+    expect(segments.first.headDown, '안정');
+    expect(segments.first.torsoLean, '안정');
+    expect(segments.first.openPosture, '열림');
+    expect(segments.first.powerZone, '높음');
+    expect(segments.first.headAlignment, '약간 기울어짐');
+    expect(segments.first.torsoLeanDirection, '앞으로');
     expect(segments.first.gestureActivity, '보통');
-    expect(segments.first.postureReasons, ['어깨 기울어짐 40% 구간']);
+    expect(segments.first.postureReasons, ['어깨가 약간 기울어진 구간이 있었어요']);
   });
 
   test(
@@ -103,15 +106,38 @@ void main() {
     expect(segments.first.torsoLean, '상체 기울기 신호 부족');
   });
 
-  test('gestureActivityText and armOpennessText map known levels', () {
+  test('gestureActivityText maps known levels', () {
     expect(mapper.gestureActivityText('low'), '낮음');
     expect(mapper.gestureActivityText('normal'), '보통');
     expect(mapper.gestureActivityText('high'), '높음');
     expect(mapper.gestureActivityText('unknown'), '분석 없음');
+  });
 
-    expect(mapper.armOpennessText('closed'), '닫힘');
-    expect(mapper.armOpennessText('normal'), '보통');
-    expect(mapper.armOpennessText('open'), '열림');
-    expect(mapper.armOpennessText('unknown'), '분석 없음');
+  test('levelText maps stable/mild/severe/unknown', () {
+    expect(mapper.levelText('stable'), '안정');
+    expect(mapper.levelText('mild'), '약간 기울어짐');
+    expect(mapper.levelText('severe'), '많이 기울어짐');
+    expect(mapper.levelText('unknown'), '분석 없음');
+  });
+
+  test('openPostureText maps closed/normal/open/unknown', () {
+    expect(mapper.openPostureText('closed'), '닫힘');
+    expect(mapper.openPostureText('normal'), '보통');
+    expect(mapper.openPostureText('open'), '열림');
+    expect(mapper.openPostureText('unknown'), '분석 없음');
+  });
+
+  test('powerZoneText maps low/normal/high/unknown', () {
+    expect(mapper.powerZoneText('low'), '낮음');
+    expect(mapper.powerZoneText('normal'), '보통');
+    expect(mapper.powerZoneText('high'), '높음');
+    expect(mapper.powerZoneText('unknown'), '분석 없음');
+  });
+
+  test('torsoLeanDirectionText maps forward/backward/neutral/unknown', () {
+    expect(mapper.torsoLeanDirectionText('forward'), '앞으로');
+    expect(mapper.torsoLeanDirectionText('backward'), '뒤로');
+    expect(mapper.torsoLeanDirectionText('neutral'), '중립');
+    expect(mapper.torsoLeanDirectionText('unknown'), '분석 없음');
   });
 }

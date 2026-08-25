@@ -78,7 +78,20 @@ String gestureActivityText(String level) {
   }
 }
 
-String armOpennessText(String level) {
+String levelText(String level) {
+  switch (level) {
+    case 'stable':
+      return '안정';
+    case 'mild':
+      return '약간 기울어짐';
+    case 'severe':
+      return '많이 기울어짐';
+    default:
+      return '분석 없음';
+  }
+}
+
+String openPostureText(String level) {
   switch (level) {
     case 'closed':
       return '닫힘';
@@ -86,6 +99,32 @@ String armOpennessText(String level) {
       return '보통';
     case 'open':
       return '열림';
+    default:
+      return '분석 없음';
+  }
+}
+
+String powerZoneText(String level) {
+  switch (level) {
+    case 'low':
+      return '낮음';
+    case 'normal':
+      return '보통';
+    case 'high':
+      return '높음';
+    default:
+      return '분석 없음';
+  }
+}
+
+String torsoLeanDirectionText(String direction) {
+  switch (direction) {
+    case 'forward':
+      return '앞으로';
+    case 'backward':
+      return '뒤로';
+    case 'neutral':
+      return '중립';
     default:
       return '분석 없음';
   }
@@ -289,20 +328,27 @@ List<Segment> buildSegments(Map<String, dynamic> result) {
       postureSignalSufficient: postureWindow?.signalSufficient ?? false,
       shoulderTilt: postureWindow == null
           ? ''
-          : '평균 ${postureWindow.shoulderTiltAvgDeg.toStringAsFixed(1)}도 '
-              '· 초과 ${(postureWindow.shoulderTiltExceedRatio * 100).toStringAsFixed(0)}%',
+          : levelText(postureWindow.shoulderTiltLevel),
       headDown: postureWindow == null
           ? ''
-          : '평균 ${postureWindow.headDownAvgDeg.toStringAsFixed(1)}도 '
-              '· 초과 ${(postureWindow.headDownExceedRatio * 100).toStringAsFixed(0)}%',
+          : levelText(postureWindow.headDownLevel),
       torsoLean: postureWindow == null
           ? ''
           : (postureWindow.torsoSignalSufficient
-              ? '평균 ${postureWindow.torsoLeanAvgDeg.toStringAsFixed(1)}도 '
-                  '· 초과 ${(postureWindow.torsoLeanExceedRatio * 100).toStringAsFixed(0)}%'
+              ? levelText(postureWindow.torsoLeanLevel)
               : '상체 기울기 신호 부족'),
-      armOpenness:
-          postureWindow == null ? '' : armOpennessText(postureWindow.armOpennessLevel),
+      openPosture: postureWindow == null
+          ? ''
+          : openPostureText(postureWindow.openPostureLevel),
+      powerZone: postureWindow == null
+          ? ''
+          : powerZoneText(postureWindow.powerZoneLevel),
+      headAlignment: postureWindow == null
+          ? ''
+          : levelText(postureWindow.headAlignmentLevel),
+      torsoLeanDirection: postureWindow == null
+          ? ''
+          : torsoLeanDirectionText(postureWindow.torsoLeanDirection),
       gestureActivity: postureWindow == null
           ? ''
           : gestureActivityText(postureWindow.gestureActivityLevel),
