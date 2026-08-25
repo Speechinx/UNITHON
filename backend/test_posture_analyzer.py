@@ -166,6 +166,7 @@ def test_analyze_window_signal_insufficient_when_too_many_invalid_frames():
     assert result == {
         "signal_sufficient": False,
         "valid_frame_ratio": 0.25,
+        "avatar_state": "unknown",
     }
 
 
@@ -177,6 +178,7 @@ def test_analyze_window_empty_list_is_insufficient():
     assert result == {
         "signal_sufficient": False,
         "valid_frame_ratio": 0.0,
+        "avatar_state": "unknown",
     }
 
 
@@ -193,6 +195,33 @@ def test_analyze_window_all_level_frames_has_zero_tilt_and_low_activity():
     assert result["shoulder_tilt_exceed_ratio"] == 0.0
     assert result["gesture_activity_level"] == "low"
     assert result["reasons"] == []
+
+
+def test_analyze_window_avatar_state_good_when_no_reasons():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["reasons"] == []
+    assert result["avatar_state"] == "good"
+
+
+def test_analyze_window_avatar_state_bad_when_reasons_present():
+    analyzer = PostureAnalyzer()
+
+    tilted_frame = _frame(
+        left_shoulder=(0.4, 0.35),
+        right_shoulder=(0.6, 0.55),
+    )
+
+    frames = [tilted_frame] * 4 + [_frame()]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["reasons"] != []
+    assert result["avatar_state"] == "bad"
 
 
 def test_analyze_window_flags_shoulder_tilt_reason_when_exceed_ratio_high():
@@ -366,6 +395,7 @@ def test_analyze_window_result_is_compatible_with_posture_window_schema():
 
     assert window.torso_signal_sufficient is True
     assert window.gaze_signal_sufficient is True
+    assert window.avatar_state == "good"
 
 
 def test_arm_openness_ratio_greater_than_one_when_elbows_wider_than_shoulders():

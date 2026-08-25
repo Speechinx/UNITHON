@@ -215,6 +215,7 @@ class PostureAnalyzer:
             return {
                 "signal_sufficient": False,
                 "valid_frame_ratio": round(valid_ratio, 2),
+                "avatar_state": "unknown",
             }
 
         shoulder_tilts = [
@@ -386,6 +387,12 @@ class PostureAnalyzer:
                 f"시선 이탈 {gaze_away_exceed_ratio * 100:.0f}% 구간"
             )
 
+        avatar_state = (
+            "bad"
+            if reasons
+            else "good"
+        )
+
         return {
             "signal_sufficient": True,
             "valid_frame_ratio": round(valid_ratio, 2),
@@ -403,6 +410,7 @@ class PostureAnalyzer:
             "gaze_away_avg_deg": round(gaze_away_avg, 2),
             "gaze_away_exceed_ratio": round(gaze_away_exceed_ratio, 2),
             "reasons": reasons,
+            "avatar_state": avatar_state,
         }
 
     def _shoulder_center_x(

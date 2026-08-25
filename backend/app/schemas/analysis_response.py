@@ -123,6 +123,8 @@ class PostureWindow(
         str
     ] = []
 
+    avatar_state: str = "unknown"
+
 
 class PostureResult(
     BaseModel
