@@ -10,8 +10,12 @@ LANDMARK_INDICES = {
     "nose": 0,
     "left_shoulder": 11,
     "right_shoulder": 12,
+    "left_elbow": 13,
+    "right_elbow": 14,
     "left_wrist": 15,
     "right_wrist": 16,
+    "left_hip": 23,
+    "right_hip": 24,
 }
 
 

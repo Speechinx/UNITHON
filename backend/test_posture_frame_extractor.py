@@ -82,6 +82,10 @@ def test_extract_maps_landmark_indices_correctly(monkeypatch, extractor):
         "nose": {"x": 0.0, "y": 0.0, "visibility": 0.0},
         "left_shoulder": {"x": 0.11, "y": 0.11, "visibility": 0.11},
         "right_shoulder": {"x": 0.12, "y": 0.12, "visibility": 0.12},
+        "left_elbow": {"x": 0.13, "y": 0.13, "visibility": 0.13},
+        "right_elbow": {"x": 0.14, "y": 0.14, "visibility": 0.14},
         "left_wrist": {"x": 0.15, "y": 0.15, "visibility": 0.15},
         "right_wrist": {"x": 0.16, "y": 0.16, "visibility": 0.16},
+        "left_hip": {"x": 0.23, "y": 0.23, "visibility": 0.23},
+        "right_hip": {"x": 0.24, "y": 0.24, "visibility": 0.24},
     }
