@@ -2757,7 +2757,6 @@ class _WindowDetailCard
               )
             else ...[
               Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: _DetailItem(
