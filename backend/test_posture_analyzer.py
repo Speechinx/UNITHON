@@ -17,6 +17,8 @@ def _frame(
     right_wrist=(0.65, 0.6),
     left_hip=(0.45, 0.75),
     right_hip=(0.55, 0.75),
+    left_elbow=(0.38, 0.55),
+    right_elbow=(0.62, 0.55),
     visibility=1.0,
 ):
     return {
@@ -27,6 +29,8 @@ def _frame(
         "right_wrist": _landmark(*right_wrist, visibility),
         "left_hip": _landmark(*left_hip, visibility),
         "right_hip": _landmark(*right_hip, visibility),
+        "left_elbow": _landmark(*left_elbow, visibility),
+        "right_elbow": _landmark(*right_elbow, visibility),
     }
 
 
@@ -329,3 +333,63 @@ def test_analyze_window_result_is_compatible_with_posture_window_schema():
     window = PostureWindow(**result)
 
     assert window.torso_signal_sufficient is True
+
+
+def test_arm_openness_ratio_greater_than_one_when_elbows_wider_than_shoulders():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame(
+        left_shoulder=(0.45, 0.4),
+        right_shoulder=(0.55, 0.4),
+        left_elbow=(0.2, 0.4),
+        right_elbow=(0.8, 0.4),
+    )
+
+    assert math.isclose(
+        analyzer._arm_openness_ratio(frame),
+        6.0,
+        rel_tol=1e-9,
+    )
+
+
+def test_arm_openness_level_closed_when_ratio_low():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._arm_openness_level([0.5, 0.6]) == "closed"
+
+
+def test_arm_openness_level_open_when_ratio_high():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._arm_openness_level([1.5, 1.6]) == "open"
+
+
+def test_arm_openness_level_normal_at_middle_ratio():
+    analyzer = PostureAnalyzer()
+
+    assert analyzer._arm_openness_level([1.0, 1.0]) == "normal"
+
+
+def test_analyze_window_all_level_frames_has_normal_arm_openness():
+    analyzer = PostureAnalyzer()
+
+    frames = [_frame() for _ in range(5)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["arm_openness_level"] == "normal"
+
+
+def test_analyze_window_arm_openness_unknown_when_elbows_low_visibility():
+    analyzer = PostureAnalyzer()
+
+    frame = _frame()
+    frame["left_elbow"]["visibility"] = 0.1
+    frame["right_elbow"]["visibility"] = 0.1
+
+    frames = [frame for _ in range(10)]
+
+    result = analyzer.analyze_window(frames)
+
+    assert result["signal_sufficient"] is True
+    assert result["arm_openness_level"] == "unknown"

@@ -113,6 +113,8 @@ class PostureWindow(
     torso_lean_avg_deg: float = 0.0
     torso_lean_exceed_ratio: float = 0.0
 
+    arm_openness_level: str = "unknown"
+
     reasons: List[
         str
     ] = []

@@ -31,6 +31,14 @@ class PostureAnalyzer:
         "right_hip",
     ]
 
+    ARM_LANDMARKS = [
+        "left_elbow",
+        "right_elbow",
+    ]
+
+    ARM_OPENNESS_LOW_THRESHOLD = 0.8
+    ARM_OPENNESS_HIGH_THRESHOLD = 1.3
+
     def _is_valid(
         self,
         frame: dict | None,
@@ -234,6 +242,28 @@ class PostureAnalyzer:
             torso_lean_avg = 0.0
             torso_lean_exceed_ratio = 0.0
 
+        arm_frames = [
+            frame
+            for frame in valid_frames
+            if self._has_signal(frame, self.ARM_LANDMARKS)
+        ]
+
+        arm_ratio = (
+            len(arm_frames) / len(valid_frames)
+            if valid_frames
+            else 0.0
+        )
+
+        if arm_ratio >= self.MIN_VALID_FRAME_RATIO:
+            arm_openness = self._arm_openness_level(
+                [
+                    self._arm_openness_ratio(frame)
+                    for frame in arm_frames
+                ]
+            )
+        else:
+            arm_openness = "unknown"
+
         shoulder_tilt_avg = statistics.mean(shoulder_tilts)
         shoulder_tilt_exceed_ratio = self._exceed_ratio(
             shoulder_tilts,
@@ -296,6 +326,7 @@ class PostureAnalyzer:
             "torso_signal_sufficient": torso_signal_sufficient,
             "torso_lean_avg_deg": round(torso_lean_avg, 2),
             "torso_lean_exceed_ratio": round(torso_lean_exceed_ratio, 2),
+            "arm_openness_level": arm_openness,
             "reasons": reasons,
         }
 
@@ -323,6 +354,52 @@ class PostureAnalyzer:
             right["x"],
             right["y"],
         )
+
+    def _distance(
+        self,
+        a: dict,
+        b: dict,
+    ) -> float:
+
+        return math.hypot(
+            b["x"] - a["x"],
+            b["y"] - a["y"],
+        )
+
+    def _arm_openness_ratio(
+        self,
+        frame: dict,
+    ) -> float:
+
+        shoulder_width = self._distance(
+            frame["left_shoulder"],
+            frame["right_shoulder"],
+        )
+
+        if shoulder_width == 0:
+            return 1.0
+
+        elbow_width = self._distance(
+            frame["left_elbow"],
+            frame["right_elbow"],
+        )
+
+        return elbow_width / shoulder_width
+
+    def _arm_openness_level(
+        self,
+        ratios: list[float],
+    ) -> str:
+
+        avg_ratio = statistics.mean(ratios)
+
+        if avg_ratio < self.ARM_OPENNESS_LOW_THRESHOLD:
+            return "closed"
+
+        if avg_ratio > self.ARM_OPENNESS_HIGH_THRESHOLD:
+            return "open"
+
+        return "normal"
 
     def _gesture_activity_level(
         self,
