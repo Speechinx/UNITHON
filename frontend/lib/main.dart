@@ -2786,6 +2786,37 @@ class _WindowDetailCard
                 height: 12,
               ),
 
+              Row(
+                children: [
+                  Expanded(
+                    child: _DetailItem(
+                      label: '상체 기울기',
+                      value: postureWindow!.torsoSignalSufficient
+                          ? '평균 ${postureWindow!.torsoLeanAvgDeg.toStringAsFixed(1)}도 '
+                              '· 초과 ${(postureWindow!.torsoLeanExceedRatio * 100).toStringAsFixed(0)}%'
+                          : '상체 기울기 신호 부족',
+                    ),
+                  ),
+
+                  const SizedBox(
+                    width: 12,
+                  ),
+
+                  Expanded(
+                    child: _DetailItem(
+                      label: '팔 벌어짐',
+                      value: _armOpennessText(
+                        postureWindow!.armOpennessLevel,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(
+                height: 12,
+              ),
+
               _DetailItem(
                 label: '제스처 활동성',
                 value: _gestureActivityText(
@@ -3315,6 +3346,24 @@ String _gestureActivityText(
 
     case 'high':
       return '높음';
+
+    default:
+      return '분석 없음';
+  }
+}
+
+String _armOpennessText(
+  String level,
+) {
+  switch (level) {
+    case 'closed':
+      return '닫힘';
+
+    case 'normal':
+      return '보통';
+
+    case 'open':
+      return '열림';
 
     default:
       return '분석 없음';

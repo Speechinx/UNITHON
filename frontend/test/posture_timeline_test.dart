@@ -59,4 +59,35 @@ void main() {
       expect(window.reasons, <String>[]);
     },
   );
+
+  test('fromJson parses torso lean and arm openness fields', () {
+    final window = PostureWindow.fromJson({
+      'window_index': 1,
+      'signal_sufficient': true,
+      'torso_signal_sufficient': true,
+      'torso_lean_avg_deg': 12.0,
+      'torso_lean_exceed_ratio': 0.4,
+      'arm_openness_level': 'open',
+    });
+
+    expect(window.torsoSignalSufficient, true);
+    expect(window.torsoLeanAvgDeg, 12.0);
+    expect(window.torsoLeanExceedRatio, 0.4);
+    expect(window.armOpennessLevel, 'open');
+  });
+
+  test(
+    'fromJson defaults torso fields to insufficient and arm openness to unknown',
+    () {
+      final window = PostureWindow.fromJson({
+        'window_index': 0,
+        'signal_sufficient': false,
+      });
+
+      expect(window.torsoSignalSufficient, false);
+      expect(window.torsoLeanAvgDeg, 0.0);
+      expect(window.torsoLeanExceedRatio, 0.0);
+      expect(window.armOpennessLevel, 'unknown');
+    },
+  );
 }
