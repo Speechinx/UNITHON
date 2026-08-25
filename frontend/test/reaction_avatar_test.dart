@@ -6,10 +6,10 @@ void main() {
     expect(reactionAssetForState('engaged'), 'assets/reactions/engaged.mp4');
     expect(reactionAssetForState('focused'), 'assets/reactions/focused.mp4');
     expect(reactionAssetForState('confused'), 'assets/reactions/confused.mp4');
+    expect(reactionAssetForState('bored'), 'assets/reactions/bored.mp4');
   });
 
   test('returns null for states without a reaction video', () {
-    expect(reactionAssetForState('bored'), null);
     expect(reactionAssetForState('unknown'), null);
     expect(reactionAssetForState('idle'), null);
     expect(reactionAssetForState('nonsense'), null);

@@ -3,12 +3,13 @@ import 'package:video_player/video_player.dart';
 
 import 'avatar_widget.dart';
 
-/// avatar_state별 반응 영상 asset 경로. 영상이 없는 상태(`bored`)는
-/// 매핑에서 제외되어 [AvatarWidget] 이모지 폴백으로 처리된다.
+/// avatar_state별 반응 영상 asset 경로. 매핑에 없는 상태는
+/// [AvatarWidget] 이모지 폴백으로 처리된다.
 const Map<String, String> reactionVideoAssets = {
   'engaged': 'assets/reactions/engaged.mp4',
   'focused': 'assets/reactions/focused.mp4',
   'confused': 'assets/reactions/confused.mp4',
+  'bored': 'assets/reactions/bored.mp4',
 };
 
 String? reactionAssetForState(String state) {
