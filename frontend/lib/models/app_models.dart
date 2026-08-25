@@ -58,7 +58,10 @@ class Segment {
     required this.shoulderTilt,
     required this.headDown,
     required this.torsoLean,
-    required this.armOpenness,
+    required this.openPosture,
+    required this.powerZone,
+    required this.headAlignment,
+    required this.torsoLeanDirection,
     required this.gestureActivity,
     required this.postureReasons,
   });
@@ -85,7 +88,10 @@ class Segment {
   final String shoulderTilt;
   final String headDown;
   final String torsoLean;
-  final String armOpenness;
+  final String openPosture;
+  final String powerZone;
+  final String headAlignment;
+  final String torsoLeanDirection;
   final String gestureActivity;
   final List<String> postureReasons;
 }
