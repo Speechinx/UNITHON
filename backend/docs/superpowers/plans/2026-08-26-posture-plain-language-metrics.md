@@ -235,7 +235,7 @@ def test_analyze_window_shoulder_tilt_level_mild_produces_plain_reason():
 
     tilted_frame = _frame(
         left_shoulder=(0.4, 0.38),
-        right_shoulder=(0.6, 0.41),
+        right_shoulder=(0.6, 0.43),
     )
 
     frames = [tilted_frame] * 4 + [_frame()]
@@ -294,7 +294,7 @@ def test_analyze_window_head_down_level_severe_produces_plain_reason():
     analyzer = PostureAnalyzer()
 
     very_hunched_frame = _frame(
-        nose=(0.5, 0.47),
+        nose=(0.5, 0.495),
         left_shoulder=(0.4, 0.5),
         right_shoulder=(0.6, 0.5),
     )
@@ -311,7 +311,7 @@ def test_analyze_window_gaze_away_level_mild_produces_plain_reason():
     analyzer = PostureAnalyzer()
 
     turned_frame = _frame(
-        nose=(0.532, 0.2),
+        nose=(0.545, 0.2),
         left_ear=(0.42, 0.2),
         right_ear=(0.58, 0.2),
     )
@@ -384,14 +384,14 @@ def test_analyze_window_sway_level_severe_produces_plain_reason():
     assert "몸이 자주 좌우로 흔들렸어요" in result["reasons"]
 ```
 
-Numeric derivations behind these fixtures (for reviewer sanity-check, not part of the code):
-- Shoulder tilt mild: `left=(0.4,0.38)`, `right=(0.6,0.41)` → `dx=0.2, dy=0.03` → `atan2(0.03,0.2)=8.53°` → `mild` (`8 <= 8.53 < 15`).
-- Shoulder tilt severe: `left=(0.4,0.35), right=(0.6,0.55)` → `dx=0.2, dy=0.2` → `45°` → `severe` (matches an existing test's fixture).
-- Head down mild: shoulder mid_y=0.5, shoulder_width=`hypot(0.2,0)=0.2`. `nose=(0.5,0.42)` → `dy=0.42-0.5=-0.08` → `atan2(0.2,0.08)=68.2°` → `mild` (`60 <= 68.2 < 75`).
-- Head down severe: `nose=(0.5,0.47)` → `dy=-0.03` → `atan2(0.2,0.03)=81.5°` → `severe` (`>=75`).
-- Gaze away mild: ears at `0.42`/`0.58` → `ear_half_distance=0.08`. `nose=(0.532,0.2)` → `dx=0.032` → `atan2(0.032,0.08)=21.8°` → `mild` (`20 <= 21.8 < 35`).
-- Gaze away severe: `nose=(0.58,0.2)` → `dx=0.08` → `atan2(0.08,0.08)=45°` → `severe` (`>=35`).
-- Sway mild: shoulder centers alternate `0.47/0.53` → deviations `±0.03` from mean `0.5` → population stdev `=0.03` → `mild` (`0.02 <= 0.03 < 0.05`).
+Numeric derivations behind these fixtures (for reviewer sanity-check, not part of the code). **Important:** each `*_level` is classified against the **window average** across all 5 frames in `[X] * 4 + [Y]`, not the single extreme frame's own angle — the trailing 5th frame's value pulls the mean toward it, so a fixture must be sized so the *average*, not the single-frame value, lands in the intended band:
+- Shoulder tilt mild: `left=(0.4,0.38)`, `right=(0.6,0.43)` → single-frame `dx=0.2, dy=0.05` → `atan2(0.05,0.2)=14.04°`; averaged with the trailing default frame's `0°` → `(4×14.04+0)/5=11.23°` → `mild` (`8 <= 11.23 < 15`).
+- Shoulder tilt severe: `left=(0.4,0.35), right=(0.6,0.55)` → single-frame `45°`; averaged with `0°` → `(4×45+0)/5=36°` → `severe` (`>=15`, wide margin).
+- Head down mild: shoulder mid_y=0.5, shoulder_width=`hypot(0.2,0)=0.2`. `nose=(0.5,0.42)` → single-frame `dy=-0.08` → `atan2(0.2,0.08)=68.2°`; the trailing frame here is `_frame(nose=(0.5,0.1))`, whose *shoulders* stay at the plain default `(0.4,0.4)/(0.6,0.4)` (only `nose` is overridden), giving mid_y=0.4 and its own non-zero angle `atan2(0.2,0.3)=33.69°` — averaged: `(4×68.2+33.69)/5=61.3°` → `mild` (`60 <= 61.3 < 75`, narrow ~1.3° margin).
+- Head down severe: `nose=(0.5,0.495)` → single-frame `dy=-0.005` → `atan2(0.2,0.005)=88.57°`; averaged with the same `33.69°` trailing-frame value → `(4×88.57+33.69)/5=77.59°` → `severe` (`>=75`).
+- Gaze away mild: ears at `0.42`/`0.58` → `ear_half_distance=0.08`. `nose=(0.545,0.2)` → single-frame `dx=0.045` → `atan2(0.045,0.08)=29.36°`; averaged with the trailing default frame's `0°` → `(4×29.36+0)/5=23.49°` → `mild` (`20 <= 23.49 < 35`).
+- Gaze away severe: `nose=(0.58,0.2)` → single-frame `dx=0.08` → `atan2(0.08,0.08)=45°`; averaged with `0°` → `(4×45+0)/5=36°` → `severe` (`>=35`, narrow ~1° margin).
+- Sway mild: shoulder centers alternate `0.47/0.53` across 4 distinct frames (no diluting 5th frame here — sway's population stdev is computed directly over all frames given) → deviations `±0.03` from mean `0.5` → population stdev `=0.03` → `mild` (`0.02 <= 0.03 < 0.05`).
 - Sway severe: shoulder centers alternate `0.42/0.58` → deviations `±0.08` → population stdev `=0.08` → `severe` (`>=0.05`).
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -567,8 +567,8 @@ def test_analyze_window_torso_lean_level_severe_produces_plain_reason():
     analyzer = PostureAnalyzer()
 
     leaned_frame = _frame(
-        left_shoulder=(0.55, 0.3),
-        right_shoulder=(0.55, 0.3),
+        left_shoulder=(0.55, 0.486),
+        right_shoulder=(0.55, 0.486),
         left_hip=(0.4, 0.7),
         right_hip=(0.4, 0.7),
     )
@@ -596,7 +596,7 @@ def test_analyze_window_torso_lean_level_unknown_when_insufficient():
     assert result["torso_lean_level"] == "unknown"
 ```
 
-Numeric check for the mild fixture: `shoulder_center=(0.52,0.3)`, `hip_center=(0.4,0.7)` → `dx=0.12, dy=-0.4` → `atan2(0.12,0.4)=16.7°` — that's above `SEVERE=20`? No, `16.7 < 20`, and `>=10` → `mild`. Good. Severe fixture: `shoulder_center=(0.55,0.3)`, `hip_center=(0.4,0.7)` → `dx=0.15,dy=-0.4` → `atan2(0.15,0.4)=20.6°` → `>=20` → `severe`. Good.
+`analyze_window` classifies `torso_lean_level` against the **window average** across all 5 frames (4 fixture frames + 1 trailing default `_frame()`, whose own torso lean is `0°`), not the single fixture frame's raw angle — the average is `0.8×` the single-frame value here. Numeric check for the mild fixture: single-frame `shoulder_center=(0.52,0.3)`, `hip_center=(0.4,0.7)` → `dx=0.12, dy=-0.4` → `atan2(0.12,0.4)=16.70°` → window avg `=0.8×16.70=13.36°`, inside `[MILD=10, SEVERE=20)` → `mild`. Severe fixture: single-frame `shoulder_center=(0.55,0.486)`, `hip_center=(0.4,0.7)` → `dx=0.15, dy=-0.214` → `atan2(0.15,0.214)=35.06°` → window avg `=0.8×35.06=28.05°`, `>=20` → `severe`.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -773,8 +773,8 @@ def test_analyze_window_forward_lean_does_not_produce_torso_reason():
     analyzer = PostureAnalyzer()
 
     leaned_forward_frame = _frame(
-        left_shoulder=(0.55, 0.3),
-        right_shoulder=(0.55, 0.3),
+        left_shoulder=(0.55, 0.486),
+        right_shoulder=(0.55, 0.486),
         left_hip=(0.4, 0.7),
         right_hip=(0.4, 0.7),
         z={
@@ -798,8 +798,8 @@ def test_analyze_window_backward_lean_still_produces_torso_reason():
     analyzer = PostureAnalyzer()
 
     leaned_backward_frame = _frame(
-        left_shoulder=(0.55, 0.3),
-        right_shoulder=(0.55, 0.3),
+        left_shoulder=(0.55, 0.486),
+        right_shoulder=(0.55, 0.486),
         left_hip=(0.4, 0.7),
         right_hip=(0.4, 0.7),
         z={
@@ -817,6 +817,8 @@ def test_analyze_window_backward_lean_still_produces_torso_reason():
     assert result["torso_lean_direction"] == "backward"
     assert "상체가 많이 기울어져 있었어요" in result["reasons"]
 ```
+
+Numeric check: `torso_lean_level` is classified against the **window average** across all 5 frames (4 fixture frames + 1 trailing default `_frame()`, whose own torso lean is `0°`), so the average is `0.8×` the single-frame value. Both fixtures use `shoulder_center=(0.55,0.486)`, `hip_center=(0.4,0.7)` → `dx=0.15, dy=-0.214` → single-frame `atan2(0.15,0.214)=35.06°` → window avg `=0.8×35.06=28.05°`, `>=TORSO_LEAN_SEVERE_DEG(20)` → `severe` (this is the same magnitude fixture as Task 4's severe test — only `z` differs here to add direction).
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -1470,8 +1472,8 @@ def test_analyze_window_head_alignment_mild_produces_plain_reason():
 
     forward_head_frame = _frame(
         z={
-            "left_ear": -0.04,
-            "right_ear": -0.04,
+            "left_ear": -0.06,
+            "right_ear": -0.06,
             "left_shoulder": 0.0,
             "right_shoulder": 0.0,
         }
@@ -1490,8 +1492,8 @@ def test_analyze_window_head_alignment_severe_produces_plain_reason():
 
     forward_head_frame = _frame(
         z={
-            "left_ear": -0.08,
-            "right_ear": -0.08,
+            "left_ear": -0.12,
+            "right_ear": -0.12,
             "left_shoulder": 0.0,
             "right_shoulder": 0.0,
         }
@@ -1520,7 +1522,7 @@ def test_analyze_window_head_alignment_unknown_when_ears_low_visibility():
     assert result["head_alignment_level"] == "unknown"
 ```
 
-Numeric check: mild fixture `offset=0.04` is between `HEAD_ALIGNMENT_MILD_Z=0.03` and `SEVERE=0.07` → `mild`. Severe fixture `offset=0.08 >= 0.07` → `severe`.
+`head_alignment_level` is classified against the **window average** across all 5 frames (4 fixture frames + 1 trailing default `_frame()`, whose own offset is `0.0`), so the average is `0.8×` the single-frame offset. Numeric check: mild fixture single-frame `offset=0.06` → window avg `=0.8×0.06=0.048`, inside `[HEAD_ALIGNMENT_MILD_Z=0.03, SEVERE=0.07)` → `mild`. Severe fixture single-frame `offset=0.12` → window avg `=0.8×0.12=0.096`, `>=0.07` → `severe`.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
