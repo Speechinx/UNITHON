@@ -11,6 +11,7 @@ class HomeRecording extends StatelessWidget {
     required this.mode,
     required this.seconds,
     required this.onStop,
+    this.isStopping = false,
     required this.cameraController,
     required this.avatarState,
     required this.onGoHome,
@@ -19,6 +20,7 @@ class HomeRecording extends StatelessWidget {
   final RecordMode mode;
   final int seconds;
   final VoidCallback onStop;
+  final bool isStopping;
   final CameraController? cameraController;
   final String avatarState;
   final VoidCallback onGoHome;
@@ -107,28 +109,31 @@ class HomeRecording extends StatelessWidget {
 
                 const SizedBox(height: 24),
                 GestureDetector(
-                  onTap: onStop,
-                  child: Container(
-                    height: 56,
-                    margin: const EdgeInsets.only(bottom: 24),
-                    decoration: BoxDecoration(
-                      color: AppColors.gray900,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.stop, size: 22, color: AppColors.white),
-                        SizedBox(width: 12),
-                        Text(
-                          '정지',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.white,
+                  onTap: isStopping ? null : onStop,
+                  child: Opacity(
+                    opacity: isStopping ? 0.6 : 1,
+                    child: Container(
+                      height: 56,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: AppColors.gray900,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.stop, size: 22, color: AppColors.white),
+                          const SizedBox(width: 12),
+                          Text(
+                            isStopping ? '정지 중...' : '정지',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.white,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

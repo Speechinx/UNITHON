@@ -95,6 +95,7 @@ class _AppShellState extends State<AppShell> {
 
   bool isRecording = false;
   bool _isStartingRecording = false;
+  bool _isStoppingRecording = false;
   int recordingSeconds = 0;
   Timer? _recordingTimer;
 
@@ -224,9 +225,14 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _stopRecording() async {
-    if (!isRecording) {
+    if (!isRecording || _isStoppingRecording) {
       return;
     }
+
+    // 정지 처리(자세 정리 + 녹음 종료)가 끝나기 전에 "정지"를 다시 누르면
+    // _audioRecorder.stop()이 중복 호출되어 두 번째 호출이 null을 반환한다
+    // (record_web의 MicRecorderDelegate가 첫 stop()에서 인코더를 비움).
+    _isStoppingRecording = true;
 
     try {
       _recordingTimer?.cancel();
@@ -272,6 +278,8 @@ class _AppShellState extends State<AppShell> {
         homeScreen = HomeScreen.start;
         errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      _isStoppingRecording = false;
     }
   }
 
@@ -748,6 +756,7 @@ class _AppShellState extends State<AppShell> {
           mode: mode,
           seconds: recordingSeconds,
           onStop: _stopRecording,
+          isStopping: _isStoppingRecording,
           cameraController: _cameraController,
           avatarState: _avatarState,
           onGoHome: _cancelRecording,
