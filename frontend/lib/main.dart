@@ -6,9 +6,11 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -147,6 +149,19 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
+  /// record 패키지의 web 구현은 path를 무시하고 blob URL을 만들어내지만,
+  /// 네이티브(Android/iOS)는 이 경로에 실제 파일을 쓴다. 상대 경로('presentation.wav')를
+  /// 넘기면 프로세스의 작업 디렉터리 기준으로 해석되어 앱이 쓸 수 없는 위치를 가리킬 수 있으므로,
+  /// 네이티브에서는 반드시 앱 임시 디렉터리 기준 절대 경로를 사용해야 한다.
+  Future<String> _newRecordingPath() async {
+    if (kIsWeb) {
+      return 'presentation.wav';
+    }
+
+    final dir = await getTemporaryDirectory();
+    return '${dir.path}/presentation_${DateTime.now().millisecondsSinceEpoch}.wav';
+  }
+
   // ============================================================
   // RECORDING
   // ============================================================
@@ -189,7 +204,7 @@ class _AppShellState extends State<AppShell> {
           noiseSuppress: true,
           autoGain: true,
         ),
-        path: 'presentation.wav',
+        path: await _newRecordingPath(),
       );
 
       setState(() {
