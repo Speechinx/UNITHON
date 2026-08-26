@@ -18,6 +18,8 @@ import 'posture/posture_blob_cleanup_stub.dart'
 import 'posture/posture_capture_buffer.dart';
 import 'posture/posture_preview_uploader.dart';
 import 'posture/posture_window_uploader.dart';
+import 'recording/recording_bytes_reader_stub.dart'
+    if (dart.library.html) 'recording/recording_bytes_reader_web.dart';
 import 'screens/analysis_detail.dart';
 import 'screens/analysis_summary.dart';
 import 'screens/history_list.dart';
@@ -253,14 +255,7 @@ class _AppShellState extends State<AppShell> {
         throw Exception('녹음 파일을 생성하지 못했습니다.');
       }
 
-      // Flutter Web에서는 녹음 파일이 blob:http://localhost:5173/... 형태로 반환됨
-      final blobResponse = await http.get(Uri.parse(path));
-
-      if (blobResponse.statusCode != 200) {
-        throw Exception('녹음 파일을 불러오지 못했습니다.');
-      }
-
-      final bytes = blobResponse.bodyBytes;
+      final bytes = await readRecordingBytes(path);
 
       if (bytes.isEmpty) {
         throw Exception('녹음된 오디오가 비어 있습니다.');
